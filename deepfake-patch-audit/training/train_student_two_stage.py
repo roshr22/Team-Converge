@@ -101,23 +101,29 @@ class TwoStagePatchStudentTrainer:
 
     def _freeze_backbone(self):
         """Freeze all backbone layers (everything except classifier)."""
+        # Get the actual model (handle both direct model and wrapper)
+        model = self.student_model.model if hasattr(self.student_model, 'model') else self.student_model
+
         # Freeze preprocessing and initial convolutions
-        for param in self.student_model.conv1.parameters():
+        for param in model.conv1.parameters():
             param.requires_grad = False
-        for param in self.student_model.conv2.parameters():
+        for param in model.conv2.parameters():
             param.requires_grad = False
-        for param in self.student_model.bn1.parameters():
+        for param in model.bn1.parameters():
             param.requires_grad = False
 
         # Freeze layer1 (residual blocks)
-        for param in self.student_model.layer1.parameters():
+        for param in model.layer1.parameters():
             param.requires_grad = False
 
         print("✓ Frozen: conv1, conv2, bn1, layer1 (backbone)")
 
     def _unfreeze_layer1(self):
         """Unfreeze layer1 (residual blocks) for fine-tuning."""
-        for param in self.student_model.layer1.parameters():
+        # Get the actual model (handle both direct model and wrapper)
+        model = self.student_model.model if hasattr(self.student_model, 'model') else self.student_model
+
+        for param in model.layer1.parameters():
             param.requires_grad = True
 
         print("✓ Unfrozen: layer1 (residual blocks)")
@@ -128,25 +134,30 @@ class TwoStagePatchStudentTrainer:
 
     def _setup_stage1_optimizer(self):
         """Set up optimizer for stage 1 (classifier only)."""
+        # Get the actual model (handle both direct model and wrapper)
+        model = self.student_model.model if hasattr(self.student_model, 'model') else self.student_model
+
         # Only train classifier layer
-        trainable_params = [self.student_model.fc.parameters()]
         self.optimizer = optim.Adam(
-            trainable_params, lr=self.stage1_lr, weight_decay=self.weight_decay
+            model.fc.parameters(), lr=self.stage1_lr, weight_decay=self.weight_decay
         )
 
         # Scheduler: reduce LR if no improvement
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="max", factor=0.5, patience=2, verbose=True
+            self.optimizer, mode="max", factor=0.5, patience=2
         )
 
         print(f"✓ Stage 1 Optimizer: Adam (lr={self.stage1_lr})")
 
     def _setup_stage2_optimizer(self):
         """Set up optimizer for stage 2 (layer1 + classifier)."""
+        # Get the actual model (handle both direct model and wrapper)
+        model = self.student_model.model if hasattr(self.student_model, 'model') else self.student_model
+
         # Train layer1 and classifier with smaller learning rate
         trainable_params = [
-            {"params": self.student_model.layer1.parameters(), "lr": self.stage2_lr},
-            {"params": self.student_model.fc.parameters(), "lr": self.stage2_lr},
+            {"params": model.layer1.parameters(), "lr": self.stage2_lr},
+            {"params": model.fc.parameters(), "lr": self.stage2_lr},
         ]
 
         self.optimizer = optim.Adam(
