@@ -36,33 +36,102 @@ def load_config(config_dir="config"):
     return {**base_config, **dataset_config, **train_config}
 
 
+def auto_detect_dataset_structure(dataset_root):
+    """Auto-detect dataset structure and return appropriate paths."""
+    dataset_root = Path(dataset_root)
+
+    # Check if we have train/val subdirectories
+    train_dir = dataset_root / "train"
+    val_dir = dataset_root / "val"
+
+    # Check if train/val have real/fake subdirectories
+    if (train_dir / "real").exists() and (train_dir / "fake").exists():
+        if (val_dir / "real").exists() and (val_dir / "fake").exists():
+            return {
+                "mode": "directory",
+                "train_root": train_dir,
+                "val_root": val_dir,
+            }
+
+    # Check for CSV files
+    train_csv = dataset_root / "data" / "splits" / "train.csv"
+    val_csv = dataset_root / "data" / "splits" / "val.csv"
+
+    if train_csv.exists() and val_csv.exists():
+        return {
+            "mode": "csv",
+            "train_csv": train_csv,
+            "val_csv": val_csv,
+        }
+
+    return None
+
+
 def create_data_loaders(config, batch_size=16, num_workers=4, device="cuda"):
     """Create train and validation data loaders."""
     dataset_root = PROJECT_ROOT / config["dataset"]["root"]
 
-    # Training dataset
-    train_dataset = BaseDataset(
-        root_dir=str(dataset_root),
-        split="train",
-        image_format="jpg",
-        resize_size=config["dataset"]["resize_size"],
-        normalize=True,
-        normalize_mean=config["dataset"]["normalize_mean"],
-        normalize_std=config["dataset"]["normalize_std"],
-        split_file=str(PROJECT_ROOT / config["dataset"]["splits"]["train_csv"]),
-    )
+    # Auto-detect dataset structure
+    dataset_info = auto_detect_dataset_structure(dataset_root)
 
-    # Validation dataset
-    val_dataset = BaseDataset(
-        root_dir=str(dataset_root),
-        split="val",
-        image_format="jpg",
-        resize_size=config["dataset"]["resize_size"],
-        normalize=True,
-        normalize_mean=config["dataset"]["normalize_mean"],
-        normalize_std=config["dataset"]["normalize_std"],
-        split_file=str(PROJECT_ROOT / config["dataset"]["splits"]["val_csv"]),
-    )
+    if dataset_info is None:
+        raise FileNotFoundError(
+            f"Dataset structure not recognized in {dataset_root}.\n"
+            "Expected either:\n"
+            "1. dataset/train/{{real,fake}}, dataset/val/{{real,fake}}\n"
+            "2. dataset/data/splits/train.csv, dataset/data/splits/val.csv"
+        )
+
+    print(f"\n✓ Detected dataset mode: {dataset_info['mode'].upper()}")
+
+    if dataset_info["mode"] == "directory":
+        # Training dataset (directory-based)
+        train_dataset = BaseDataset(
+            root_dir=str(dataset_info["train_root"]),
+            split="train",
+            image_format="jpg",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            normalize_mean=config["dataset"]["normalize_mean"],
+            normalize_std=config["dataset"]["normalize_std"],
+            split_file=None,  # Use directory structure
+        )
+
+        # Validation dataset (directory-based)
+        val_dataset = BaseDataset(
+            root_dir=str(dataset_info["val_root"]),
+            split="val",
+            image_format="jpg",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            normalize_mean=config["dataset"]["normalize_mean"],
+            normalize_std=config["dataset"]["normalize_std"],
+            split_file=None,  # Use directory structure
+        )
+    else:
+        # Training dataset (CSV-based)
+        train_dataset = BaseDataset(
+            root_dir=str(dataset_root),
+            split="train",
+            image_format="jpg",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            normalize_mean=config["dataset"]["normalize_mean"],
+            normalize_std=config["dataset"]["normalize_std"],
+            split_file=str(dataset_info["train_csv"]),
+        )
+
+        # Validation dataset (CSV-based)
+        val_dataset = BaseDataset(
+            root_dir=str(dataset_root),
+            split="val",
+            image_format="jpg",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            normalize_mean=config["dataset"]["normalize_mean"],
+            normalize_std=config["dataset"]["normalize_std"],
+            split_file=str(dataset_info["val_csv"]),
+        )
 
     # pin_memory only makes sense for CUDA training
     pin_memory = device == "cuda"

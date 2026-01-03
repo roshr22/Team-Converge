@@ -25,6 +25,39 @@ def load_config(config_path="config/base.yaml"):
         return yaml.safe_load(f)
 
 
+def auto_detect_dataset_structure(dataset_root):
+    """Auto-detect dataset structure and return appropriate paths."""
+    from pathlib import Path
+
+    dataset_root = Path(dataset_root)
+
+    # Check if we have train/val subdirectories
+    train_dir = dataset_root / "train"
+    val_dir = dataset_root / "val"
+
+    # Check if train/val have real/fake subdirectories
+    if (train_dir / "real").exists() and (train_dir / "fake").exists():
+        if (val_dir / "real").exists() and (val_dir / "fake").exists():
+            return {
+                "mode": "directory",
+                "train_root": str(train_dir),
+                "val_root": str(val_dir),
+            }
+
+    # Check for CSV files
+    train_csv = dataset_root / "data" / "splits" / "train.csv"
+    val_csv = dataset_root / "data" / "splits" / "val.csv"
+
+    if train_csv.exists() and val_csv.exists():
+        return {
+            "mode": "csv",
+            "train_csv": str(train_csv),
+            "val_csv": str(val_csv),
+        }
+
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Two-stage training for student model with knowledge distillation"
@@ -41,12 +74,6 @@ def main():
         "--dataset-root", type=str, default="dataset", help="Dataset root directory"
     )
     parser.add_argument(
-        "--split-file", type=str, default="data/splits/train.csv", help="Train split CSV"
-    )
-    parser.add_argument(
-        "--val-split-file", type=str, default="data/splits/val.csv", help="Val split CSV"
-    )
-    parser.add_argument(
         "--output-dir",
         type=str,
         default="outputs/checkpoints_two_stage",
@@ -54,6 +81,35 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Auto-detect dataset structure
+    dataset_info = auto_detect_dataset_structure(args.dataset_root)
+
+    if dataset_info is None:
+        print("\n" + "=" * 80)
+        print("ERROR: Dataset structure not recognized!")
+        print("=" * 80)
+        print("\nExpected one of:")
+        print("1. Directory structure:")
+        print("   dataset/train/real/")
+        print("   dataset/train/fake/")
+        print("   dataset/val/real/")
+        print("   dataset/val/fake/")
+        print("\n2. CSV files:")
+        print("   dataset/data/splits/train.csv")
+        print("   dataset/data/splits/val.csv")
+        exit(1)
+
+    print("\n" + "=" * 80)
+    print("Dataset Auto-Detection")
+    print("=" * 80)
+    print(f"✓ Detected mode: {dataset_info['mode'].upper()}")
+    if dataset_info["mode"] == "directory":
+        print(f"  Train: {dataset_info['train_root']}")
+        print(f"  Val:   {dataset_info['val_root']}")
+    else:
+        print(f"  Train CSV: {dataset_info['train_csv']}")
+        print(f"  Val CSV:   {dataset_info['val_csv']}")
 
     # Load config
     config = load_config()
@@ -100,23 +156,41 @@ def main():
     print("Loading Datasets")
     print("=" * 80)
 
-    # Training dataset
-    train_dataset = BaseDataset(
-        root_dir=args.dataset_root,
-        split="train",
-        resize_size=config["dataset"]["resize_size"],
-        normalize=True,
-        split_file=args.split_file,
-    )
+    # Load datasets based on detected structure
+    if dataset_info["mode"] == "directory":
+        # Use directory structure (train/real, train/fake, etc.)
+        train_dataset = BaseDataset(
+            root_dir=dataset_info["train_root"],
+            split="train",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            split_file=None,  # Use directory structure
+        )
 
-    # Validation dataset
-    val_dataset = BaseDataset(
-        root_dir=args.dataset_root,
-        split="val",
-        resize_size=config["dataset"]["resize_size"],
-        normalize=True,
-        split_file=args.val_split_file,
-    )
+        val_dataset = BaseDataset(
+            root_dir=dataset_info["val_root"],
+            split="val",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            split_file=None,  # Use directory structure
+        )
+    else:
+        # Use CSV split files
+        train_dataset = BaseDataset(
+            root_dir=args.dataset_root,
+            split="train",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            split_file=dataset_info["train_csv"],
+        )
+
+        val_dataset = BaseDataset(
+            root_dir=args.dataset_root,
+            split="val",
+            resize_size=config["dataset"]["resize_size"],
+            normalize=True,
+            split_file=dataset_info["val_csv"],
+        )
 
     train_loader = DataLoader(
         train_dataset,
