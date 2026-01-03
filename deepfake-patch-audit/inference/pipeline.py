@@ -37,7 +37,7 @@ class InferencePipeline:
             Preprocessed image tensor (1, 3, H, W)
         """
         image = Image.open(image_path).convert("RGB")
-        image = image.resize((resize_size, resize_size), Image.BILINEAR)
+        image = image.resize((resize_size, resize_size), Image.BICUBIC)
         image = np.array(image, dtype=np.float32) / 255.0
 
         # Normalize (ImageNet)

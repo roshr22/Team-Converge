@@ -35,7 +35,7 @@ class BaseDataset(Dataset):
             root_dir: Root directory containing 'real' and 'fake' subdirectories
             split: 'train', 'val', or 'test'
             image_format: Image file extension (default: 'jpg')
-            resize_size: Target image size for resizing (deterministic resize with bilinear)
+            resize_size: Target image size for resizing (deterministic resize with bicubic)
             normalize: Whether to normalize images with ImageNet constants
             normalize_mean: Normalization mean (ImageNet default if None)
             normalize_std: Normalization std (ImageNet default if None)
@@ -111,7 +111,7 @@ class BaseDataset(Dataset):
         image = Image.open(img_path).convert("RGB")
 
         # Resize
-        image = image.resize((self.resize_size, self.resize_size), Image.BILINEAR)
+        image = image.resize((self.resize_size, self.resize_size), Image.BICUBIC)
 
         # Convert to numpy array
         image = np.array(image, dtype=np.float32) / 255.0
