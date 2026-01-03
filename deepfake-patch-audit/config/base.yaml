@@ -1,0 +1,38 @@
+# Frozen architecture contract
+# These parameters define the model architecture and should remain consistent
+
+model:
+  # Teacher model (LaDeDa9)
+  teacher:
+    architecture: "LaDeDa9"
+    preprocess_type: "NPR"  # Nearest Neighbor Residual
+    pretrained: true
+    pretrained_path: "weights/teacher/WildRF_LaDeDa.pth"
+    freeze_backbone: true
+    num_classes: 1  # Binary classification (1 logit per patch)
+    pool: false  # Output spatial patch-logit maps
+
+  # Student model (Tiny-LaDeDa)
+  student:
+    architecture: "TinyLaDeDa"
+    preprocess_type: "right_diag"  # Gradient-based preprocessing
+    pretrained: false  # Train from scratch via distillation
+    pretrained_path: "weights/student/ForenSynth_Tiny_LaDeDa.pth"
+    num_classes: 1  # Binary classification (1 logit per patch)
+    pool: false  # Output spatial patch-logit maps
+
+# Patch maps spatial dimensions
+patches:
+  # Teacher: 256x256 input → 31x31 patch map (961 patches)
+  # Student: 256x256 input → 126x126 patch map (15,876 patches)
+  teacher_grid: [31, 31]  # Spatial grid: 31x31 patches
+  student_grid: [126, 126]  # Spatial grid: 126x126 patches
+  num_teacher_patches: 961  # 31 * 31
+  num_student_patches: 15876  # 126 * 126
+
+# Top-K pooling strategy for selecting high-confidence patches
+pooling:
+  strategy: "top_k_logit"
+  r: 0.1  # Select top 10% of patches
+  min_k: 5  # Minimum 5 patches selected
+  aggregation: "mean"  # Aggregate selected patches via mean of logits

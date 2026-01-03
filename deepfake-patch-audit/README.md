@@ -1,0 +1,321 @@
+# Deepfake Patch-Audit
+
+Deepfake detection using patch-level teacher-student distillation with quantization auditing.
+
+## Overview
+
+This project implements a scalable deepfake detection system based on:
+- **Teacher-Student Architecture**: A large pretrained LaDeDa teacher model distills knowledge to a lightweight TinyLaDeDa student
+- **Patch-based Analysis**: Processes images as patches to identify localized deepfake artifacts
+- **Top-K Pooling**: Aggregates patch-level predictions for final classification
+- **Quantization Auditing**: Rigorous testing of quantized models for edge deployment
+
+## Project Structure
+
+```
+deepfake-patch-audit/
+├── config/                 # Configuration files
+│   ├── base.yaml          # Architecture contract
+│   ├── dataset.yaml       # Dataset paths and splits
+│   ├── train.yaml         # Training hyperparameters
+│   └── quant.yaml         # Quantization settings
+│
+├── data/                  # Data directory
+│   ├── splits/            # CSV files for train/val/test
+│   └── samples/           # Debug sample images
+│
+├── datasets/              # Data loading
+│   ├── base_dataset.py    # Base dataset class
+│   ├── frame_dataset.py   # Frame-based loader
+│   └── transforms.py      # Preprocessing (normalize, JPEG-shift)
+│
+├── models/                # Model implementations
+│   ├── teacher/
+│   │   ├── ladeda_wrapper.py    # Pretrained LaDeDa
+│   │   └── patch_adapter.py     # Patch grid enforcement
+│   │
+│   ├── student/
+│   │   ├── tiny_ladeda.py       # Lightweight student
+│   │   └── blocks.py            # Conv/Bottleneck blocks
+│   │
+│   └── pooling.py               # Top-K aggregation
+│
+├── losses/                # Training losses
+│   └── distillation.py   # KD loss (MSE + BCE)
+│
+├── inference/             # Prediction pipeline
+│   ├── pipeline.py       # Main inference
+│   └── heatmap.py        # Patch visualization
+│
+├── training/              # Training utilities
+│   ├── train_student.py  # Student training loop
+│   └── eval_loop.py      # Validation/testing
+│
+├── evaluation/            # Metrics and analysis
+│   ├── metrics.py        # AUC, Accuracy@τ
+│   ├── threshold.py      # Threshold tuning
+│   └── distribution_shift.py  # JPEG robustness tests
+│
+├── quantization/          # Quantization tools
+│   ├── dynamic_range.py  # Preferred quantization
+│   ├── full_int8.py      # Optional (harder)
+│   └── audit.py          # Float vs quant comparison
+│
+├── federated/             # Federated learning (boxed extension)
+│   ├── client.py         # Client trainer
+│   ├── server.py         # FedProx aggregator
+│   └── simulation.py     # Federated simulation
+│
+├── scripts/               # Utility scripts
+│   ├── audit_teacher.py     # Verify patch alignment
+│   ├── audit_student.py     # Check student structure
+│   ├── export_tflite.py     # Export to TFLite
+│   └── run_eval.py          # One-command evaluation
+│
+├── tests/                 # Unit tests
+│   ├── test_patch_alignment.py
+│   ├── test_topk_pooling.py
+│   ├── test_quant_consistency.py
+│   └── test_inference_contract.py
+│
+├── outputs/               # Results directory
+│   ├── checkpoints/       # Model weights
+│   ├── logs/              # Training logs
+│   └── heatmaps/          # Visualizations
+│
+├── requirements.txt       # Python dependencies
+├── setup.py              # Package setup
+└── README.md             # This file
+```
+
+## Installation
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Or install as package
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Prepare Data
+
+Organize dataset in the following structure:
+```
+dataset/
+├── train/
+│   ├── real/     # Real face images
+│   └── fake/     # Deepfake images
+├── test/
+│   ├── real/
+│   └── fake/
+└── samples/      # Optional: sample images for debugging
+    └── fake/
+```
+
+### 2. Configure Settings
+
+Edit `config/` files to customize:
+- Model architecture (base.yaml)
+- Dataset paths and splits (dataset.yaml)
+- Training hyperparameters (train.yaml)
+- Quantization settings (quant.yaml)
+
+### 3. Train Student Model
+
+```python
+from datasets.base_dataset import BaseDataset
+from torch.utils.data import DataLoader
+from models.student.tiny_ladeda import TinyLaDeDa
+from models.teacher.ladeda_wrapper import LaDeDaWrapper
+from losses.distillation import DistillationLoss
+from training.train_student import StudentTrainer
+
+# Load data
+train_dataset = BaseDataset("dataset/train", split="train")
+train_loader = DataLoader(train_dataset, batch_size=32)
+
+val_dataset = BaseDataset("dataset/test", split="val")
+val_loader = DataLoader(val_dataset, batch_size=32)
+
+# Initialize models
+teacher = LaDeDaWrapper(pretrained=True)
+student = TinyLaDeDa(depth_multiplier=0.5, width_multiplier=0.75)
+
+# Training
+criterion = DistillationLoss(temperature=4.0, alpha=0.5)
+trainer = StudentTrainer(student, teacher, train_loader, val_loader, criterion)
+history = trainer.train(epochs=50)
+```
+
+### 4. Inference
+
+```python
+from inference.pipeline import InferencePipeline
+
+# Load model
+pipeline = InferencePipeline(student, device="cuda", threshold=0.5)
+
+# Predict single image
+result = pipeline.predict("image.jpg")
+print(f"Fake probability: {result['fake_probability']:.4f}")
+print(f"Is fake: {result['is_fake']}")
+
+# Predict batch
+results = pipeline.predict_batch(["img1.jpg", "img2.jpg"])
+```
+
+### 5. Evaluate Model
+
+```python
+from training.eval_loop import Evaluator
+
+evaluator = Evaluator(student, device="cuda")
+results = evaluator.evaluate(test_loader, return_predictions=True)
+print(f"Accuracy: {results['metrics']['accuracy']:.4f}")
+print(f"AUC: {results['metrics']['auc']:.4f}")
+```
+
+## Key Features
+
+### Patch-Based Analysis
+- Images processed as overlapping patches (224×224)
+- Patch grid enforced via `PatchAdapter`
+- Individual patch predictions aggregated with Top-K pooling
+
+### Knowledge Distillation
+- Large teacher (LaDeDa) guides lightweight student (TinyLaDeDa)
+- Configurable temperature and loss weighting
+- Supports both KL divergence and MSE distillation
+
+### Quantization Auditing
+- Dynamic range quantization (preferred)
+- Full INT8 quantization (optional)
+- Float vs quantized model comparison
+- Tolerance-based validation
+
+### Distribution Shift Robustness
+- JPEG compression robustness testing
+- Configurable quality levels
+- Automatic threshold analysis across qualities
+
+## Configuration Guide
+
+### base.yaml
+Defines frozen model architecture:
+```yaml
+model:
+  teacher:
+    pretrained: true
+    freeze_backbone: false
+  student:
+    depth_multiplier: 0.5
+    width_multiplier: 0.75
+
+patches:
+  patch_size: 224
+  stride: 16
+  enable_padding: true
+```
+
+### dataset.yaml
+Dataset paths and preprocessing:
+```yaml
+dataset:
+  root: "../dataset"
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  resize_size: 224
+```
+
+### train.yaml
+Training hyperparameters:
+```yaml
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  scheduler: "cosine"
+
+distillation:
+  temperature: 4.0
+  alpha: 0.5  # weight of KD loss
+```
+
+### quant.yaml
+Quantization and threshold settings:
+```yaml
+quantization:
+  strategy: "dynamic_range"
+  bits: 8
+  calibration_samples: 100
+
+threshold:
+  search_method: "grid"
+  search_range: [0.3, 0.5, 0.7]
+  search_metric: "f1"
+```
+
+## Evaluation Metrics
+
+- **Accuracy**: Overall classification accuracy
+- **Precision/Recall**: Per-class performance
+- **F1 Score**: Harmonic mean of precision and recall
+- **AUC**: Area under ROC curve
+- **Accuracy@τ**: Accuracy at specific threshold τ
+
+## Quantization Workflow
+
+1. **Calibration**: Collect activation statistics (100 samples)
+2. **Quantization**: Convert weights to INT8 (dynamic range)
+3. **Validation**: Test quantized model on validation set
+4. **Audit**: Compare float vs quantized predictions
+5. **Threshold Tuning**: Find optimal threshold for quantized model
+
+## Testing
+
+Run unit tests:
+```bash
+python -m pytest tests/
+```
+
+Key tests:
+- `test_patch_alignment.py`: Verify patch grid correctness
+- `test_topk_pooling.py`: Test Top-K aggregation
+- `test_quant_consistency.py`: Check quantization fidelity
+- `test_inference_contract.py`: Validate inference pipeline
+
+## Deployment
+
+Export student model for edge deployment:
+```python
+from scripts.export_tflite import export_to_tflite
+
+export_to_tflite(student, "outputs/student.tflite")
+```
+
+## Dependencies
+
+- PyTorch >= 2.0.0
+- NumPy >= 1.24.0
+- scikit-learn >= 1.3.0
+- Pillow >= 9.0.0
+- OpenCV >= 4.8.0
+
+## References
+
+- LaDeDa: Teacher model architecture
+- Knowledge Distillation: Hinton et al. (2015)
+- Patch-based Detection: Local artifact analysis
+- Quantization: Dynamic range quantization for edge deployment
+
+## License
+
+Team Converge Research Project
+
+## Contact
+
+For questions or contributions, please reach out to the Team Converge research group.

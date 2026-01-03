@@ -1,0 +1,42 @@
+# Quantization and threshold configuration
+
+quantization:
+  # Quantization strategy
+  strategy: "dynamic_range"  # Options: dynamic_range, full_int8
+  bits: 8
+  symmetric: false
+
+  # Calibration
+  calibration_method: "entropy"
+  calibration_samples: 100
+
+  # Post-training quantization
+  ptq: true
+  ptq_calibration_iters: 100
+
+  # QAT (Quantization Aware Training)
+  qat: false
+
+  # Outputs directory
+  output_dir: "outputs/quantized_models"
+
+# Threshold tuning for quantization
+threshold:
+  # Automated threshold search
+  search_method: "grid"
+  search_range: [0.3, 0.5, 0.7]
+  search_metric: "f1"
+
+  # Fixed threshold (for inference)
+  fixed_threshold: 0.5
+
+  # Threshold validation
+  val_dataset: "val"
+  test_dataset: "test"
+
+# Audit settings
+audit:
+  compare_float_vs_quant: true
+  tolerance: 0.01  # Max allowed difference between float and quantized
+  log_mismatches: true
+  mismatches_dir: "outputs/audit_logs"

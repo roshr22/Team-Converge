@@ -1,0 +1,33 @@
+# Dataset paths and split configuration
+
+dataset:
+  # Root dataset directory (relative to project root)
+  root: "dataset"
+
+  # Subdirectories
+  train_dir: "train"
+  test_dir: "test"
+  samples_dir: "samples"
+
+  # Data split configuration (CSV-based)
+  splits:
+    train_csv: "data/splits/train.csv"
+    val_csv: "data/splits/val.csv"
+    test_csv: "data/splits/test.csv"
+
+  # Data loading
+  num_workers: 4
+  pin_memory: true
+
+  # Image loading
+  image_format: "jpg"
+
+  # Preprocessing: Resize deterministically to 256x256 with bilinear interpolation
+  # Critical: Do NOT use random crops. Use deterministic resize only.
+  resize_size: 256  # CHANGED from 224 to 256
+
+  # ImageNet normalization constants
+  # These are applied AFTER resize and tensor conversion
+  # DO NOT apply preprocessing transforms here - they are model-specific
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std: [0.229, 0.224, 0.225]

@@ -1,0 +1,37 @@
+# Training hyperparameters
+
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 1e-4
+
+  # Optimizer
+  optimizer: "adam"
+  momentum: 0.9
+
+  # Learning rate schedule
+  scheduler: "cosine"
+  warmup_epochs: 5
+  min_lr: 1e-6
+
+  # Checkpointing
+  save_interval: 5  # epochs
+  save_best: true
+
+  # Logging
+  log_interval: 100  # iterations
+  val_interval: 5  # epochs
+
+  # Device
+  device: "cuda"
+  mixed_precision: false
+
+  # Seed
+  seed: 42
+
+# Knowledge distillation (student training)
+distillation:
+  temperature: 4.0
+  alpha: 0.5  # weight of KD loss vs task loss
+  use_attention_transfer: false
