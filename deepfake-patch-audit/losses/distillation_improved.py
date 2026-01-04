@@ -193,7 +193,7 @@ class ImprovedPatchDistillationLoss(nn.Module):
         Args:
             student_patches: (B, 1, 126, 126) - student patch logits
             teacher_patches: (B, 1, 31, 31) - teacher patch logits
-            student_image_logit: (B, 1) - pooled student prediction
+            student_image_logit: (B, 1) or (B, 1, 1, 1) - pooled student prediction
             labels: (B,) - ground truth (0=real, 1=fake)
 
         Returns:
@@ -201,6 +201,13 @@ class ImprovedPatchDistillationLoss(nn.Module):
             distill_loss: Patch-level loss (for monitoring)
             task_loss: Image-level task loss (for monitoring)
         """
+
+        # === HANDLE SHAPE VARIATIONS ===
+        # Ensure student_image_logit is (B, 1)
+        if student_image_logit.dim() == 4:  # (B, 1, 1, 1)
+            student_image_logit = student_image_logit.squeeze(-1).squeeze(-1)  # (B, 1)
+        elif student_image_logit.dim() == 3:  # (B, 1, 1)
+            student_image_logit = student_image_logit.squeeze(-1)  # (B, 1)
 
         # === SCALE MATCHING ===
         # Fix: Teacher outputs [-1190,+8], student [-2,+4]
