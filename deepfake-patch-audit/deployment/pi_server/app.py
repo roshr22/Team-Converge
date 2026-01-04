@@ -106,7 +106,7 @@ def preprocess_image(image_data):
         image_data: Binary JPEG image data (128x128)
 
     Returns:
-        (1, 3, 256, 256) numpy array ready for ONNX inference
+        (1, 3, 256, 256) numpy array in float32 format ready for ONNX inference
     """
     try:
         # Load JPEG image
@@ -115,19 +115,30 @@ def preprocess_image(image_data):
         # Resize to 256x256
         image = image.resize((256, 256), Image.BICUBIC)
 
-        # Convert to numpy array
-        image_np = np.array(image, dtype=np.float32) / 255.0
+        # Convert to numpy array and normalize to [0, 1]
+        image_np = np.array(image, dtype=np.float32) / np.float32(255.0)
 
-        # Apply ImageNet normalization
-        image_np = (image_np - IMAGENET_MEAN) / IMAGENET_STD
+        # Apply ImageNet normalization (ensure float32 throughout)
+        mean = IMAGENET_MEAN.astype(np.float32)
+        std = IMAGENET_STD.astype(np.float32)
+        image_np = (image_np - mean) / std
+
+        # Ensure float32 type
+        image_np = image_np.astype(np.float32)
 
         # Convert to (C, H, W) then add batch dimension
         image_np = np.transpose(image_np, (2, 0, 1))
         image_np = np.expand_dims(image_np, axis=0)
 
+        # Final type check
+        logger.info(f"Preprocessed image shape: {image_np.shape}, dtype: {image_np.dtype}")
+        assert image_np.dtype == np.float32, f"Image dtype is {image_np.dtype}, expected float32"
+
         return image_np
     except Exception as e:
         logger.error(f"Preprocessing error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -136,20 +147,26 @@ def run_inference(image_np):
     Run inference using ONNX model.
 
     Args:
-        image_np: (1, 3, 256, 256) numpy array
+        image_np: (1, 3, 256, 256) numpy array in float32 format
 
     Returns:
         (patch_logits, is_fake, fake_prob, confidence)
     """
     try:
+        logger.info(f"Running inference with input shape: {image_np.shape}, dtype: {image_np.dtype}")
+
         input_name = onnx_session.get_inputs()[0].name
         output_name = onnx_session.get_outputs()[0].name
+
+        logger.info(f"Input name: {input_name}, Output name: {output_name}")
 
         # Run inference
         patch_logits = onnx_session.run(
             [output_name],
             {input_name: image_np}
         )[0]  # Shape: (1, 1, 126, 126)
+
+        logger.info(f"Inference successful! Output shape: {patch_logits.shape}")
 
         # TopK Pooling: Select top 10% of patches
         batch_size, channels, h, w = patch_logits.shape
@@ -398,13 +415,13 @@ def predict():
         if patch_logits is None:
             return jsonify({'error': 'Inference failed'}), 500
 
-        # Build prediction response
+        # Build prediction response (convert numpy types to Python native types for JSON serialization)
         prediction = {
             'device_id': device_id,
-            'is_fake': is_fake,
-            'fake_probability': fake_prob,
-            'confidence': confidence,
-            'inference_time_ms': inference_time
+            'is_fake': bool(is_fake),  # Convert numpy bool to Python bool
+            'fake_probability': float(fake_prob),  # Ensure Python float
+            'confidence': float(confidence),  # Ensure Python float
+            'inference_time_ms': float(inference_time)  # Ensure Python float
         }
 
         # Save suspicious image
