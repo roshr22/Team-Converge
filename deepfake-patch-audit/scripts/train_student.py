@@ -15,9 +15,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from models.teacher.ladeda_wrapper import LaDeDaWrapper
 from models.student.tiny_ladeda import TinyLaDeDa
 from models.pooling import TopKLogitPooling
-from losses.distillation import PatchDistillationLoss
+from losses.distillation_improved import ImprovedPatchDistillationLoss
 from datasets.base_dataset import BaseDataset
-from training.train_student import PatchStudentTrainer
+from training.train_student_improved import ImprovedTwoStagePatchStudentTrainer
 
 
 def load_config(config_dir="config"):
@@ -188,9 +188,13 @@ def create_models(config, device="cuda"):
 def create_criterion_and_pooling(config, device="cuda"):
     """Create loss function and pooling."""
     # Distillation loss
-    criterion = PatchDistillationLoss(
+    criterion = ImprovedPatchDistillationLoss(
         alpha_distill=config["distillation"]["alpha_distill"],
         alpha_task=config["distillation"]["alpha_task"],
+        temperature=4.0,
+        use_kl_loss=True,
+        enable_scale_matching=True,
+        enable_gradient_monitoring=True
     )
     criterion = criterion.to(device)
 

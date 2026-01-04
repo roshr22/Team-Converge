@@ -16,9 +16,9 @@ from models.student.tiny_ladeda import TinyLaDeDa
 from models.teacher.ladeda_wrapper import LaDeDaWrapper
 from datasets.base_dataset import BaseDataset
 from torch.utils.data import DataLoader
-from losses.distillation import PatchDistillationLoss
+from losses.distillation_improved import ImprovedPatchDistillationLoss
 from models.pooling import TopKLogitPooling
-from training.train_student_two_stage import TwoStagePatchStudentTrainer
+from training.train_student_improved import ImprovedTwoStagePatchStudentTrainer
 
 
 def set_seed(seed=42):
@@ -313,14 +313,19 @@ def main():
     print("Setting Up Loss and Pooling")
     print("=" * 80)
 
-    criterion = PatchDistillationLoss(
+    criterion = ImprovedPatchDistillationLoss(
         alpha_distill=config["training"]["distillation"]["alpha_distill"],
         alpha_task=config["training"]["distillation"]["alpha_task"],
+        temperature=4.0,
+        use_kl_loss=True,
+        enable_scale_matching=True,
+        enable_gradient_monitoring=True
     )
     print(
-        f"✓ Loss: PatchDistillationLoss "
+        f"✓ Loss: ImprovedPatchDistillationLoss "
         f"(alpha_distill={config['training']['distillation']['alpha_distill']}, "
-        f"alpha_task={config['training']['distillation']['alpha_task']})"
+        f"alpha_task={config['training']['distillation']['alpha_task']}, "
+        f"temperature=4.0, KL loss, scale matching enabled)"
     )
 
     pooling = TopKLogitPooling(
@@ -348,7 +353,7 @@ def main():
     # =========================================================================
     # Create Trainer and Train
     # =========================================================================
-    trainer = TwoStagePatchStudentTrainer(
+    trainer = ImprovedTwoStagePatchStudentTrainer(
         student_model=student_model,
         teacher_model=teacher_model,
         train_loader=train_loader,
@@ -360,7 +365,14 @@ def main():
         stage2_epochs=args.epochs_s2,
         stage1_lr=args.lr_s1,
         stage2_lr=args.lr_s2,
-        weight_decay=config["training"].get("weight_decay", 1e-4),
+        stage1_warmup_epochs=0.5,
+        stage2_warmup_epochs=1.0,
+        weight_decay=config["training"].get("weight_decay", 1e-5),
+        momentum=0.9,
+        gradient_clip_norm=0.5,
+        gradient_clip_value=1.0,
+        checkpoint_dir=args.output_dir,
+        save_best_only=True,
     )
 
     history = trainer.train(checkpoint_dir=args.output_dir)

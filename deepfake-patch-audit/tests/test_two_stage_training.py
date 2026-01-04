@@ -12,9 +12,9 @@ from models.student.tiny_ladeda import TinyLaDeDa
 from models.teacher.ladeda_wrapper import LaDeDaWrapper
 from datasets.base_dataset import BaseDataset
 from torch.utils.data import DataLoader
-from losses.distillation import PatchDistillationLoss
+from losses.distillation_improved import ImprovedPatchDistillationLoss
 from models.pooling import TopKLogitPooling
-from training.train_student_two_stage import TwoStagePatchStudentTrainer
+from training.train_student_improved import ImprovedTwoStagePatchStudentTrainer
 
 
 def count_trainable_params(model):
@@ -148,7 +148,7 @@ def test_loss_computation():
     student = TinyLaDeDa(pretrained=False).to(device)
     teacher = LaDeDaWrapper(pretrained=False).to(device)
     pooling = TopKLogitPooling(r=0.1, min_k=5)
-    criterion = PatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5)
+    criterion = ImprovedPatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5, temperature=4.0, use_kl_loss=True, enable_scale_matching=True)
 
     # Dummy batch
     batch_size = 2
@@ -195,10 +195,10 @@ def test_trainer_initialization():
     train_loader = DataLoader(DummyDataset(), batch_size=2)
     val_loader = DataLoader(DummyDataset(), batch_size=2)
 
-    criterion = PatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5)
+    criterion = ImprovedPatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5, temperature=4.0, use_kl_loss=True, enable_scale_matching=True)
     pooling = TopKLogitPooling(r=0.1, min_k=5)
 
-    trainer = TwoStagePatchStudentTrainer(
+    trainer = ImprovedTwoStagePatchStudentTrainer(
         student_model=student,
         teacher_model=teacher,
         train_loader=train_loader,
@@ -210,6 +210,8 @@ def test_trainer_initialization():
         stage2_epochs=1,
         stage1_lr=0.001,
         stage2_lr=0.0001,
+        stage1_warmup_epochs=0.5,
+        stage2_warmup_epochs=0.5,
     )
 
     print(f"✓ Trainer initialized successfully")
@@ -258,10 +260,10 @@ def test_mini_training_loop():
     train_loader = DataLoader(DummyDataset(), batch_size=2)
     val_loader = DataLoader(DummyDataset(), batch_size=2)
 
-    criterion = PatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5)
+    criterion = ImprovedPatchDistillationLoss(alpha_distill=0.5, alpha_task=0.5, temperature=4.0, use_kl_loss=True, enable_scale_matching=True)
     pooling = TopKLogitPooling(r=0.1, min_k=5)
 
-    trainer = TwoStagePatchStudentTrainer(
+    trainer = ImprovedTwoStagePatchStudentTrainer(
         student_model=student,
         teacher_model=teacher,
         train_loader=train_loader,
@@ -273,6 +275,8 @@ def test_mini_training_loop():
         stage2_epochs=1,
         stage1_lr=0.001,
         stage2_lr=0.0001,
+        stage1_warmup_epochs=0.5,
+        stage2_warmup_epochs=0.5,
     )
 
     print("\n--- Stage 1: Classifier Training ---")

@@ -12,7 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from models.teacher.ladeda_wrapper import LaDeDaWrapper
 from models.student.tiny_ladeda import TinyLaDeDa
 from models.pooling import TopKLogitPooling
-from losses.distillation import PatchDistillationLoss
+from losses.distillation_improved import ImprovedPatchDistillationLoss
 
 
 def count_parameters(model):
@@ -204,9 +204,12 @@ def test_loss_computation():
     teacher = LaDeDaWrapper(pretrained=False, pretrained_path=None)
     student = TinyLaDeDa(pretrained=False, pretrained_path=None)
     pooling = TopKLogitPooling(r=0.1, min_k=5, aggregation="mean")
-    criterion = PatchDistillationLoss(
+    criterion = ImprovedPatchDistillationLoss(
         alpha_distill=0.5,
         alpha_task=0.5,
+        temperature=4.0,
+        use_kl_loss=True,
+        enable_scale_matching=True
     )
 
     teacher.eval()
@@ -253,9 +256,12 @@ def test_gradient_computation():
     teacher = LaDeDaWrapper(pretrained=False, pretrained_path=None)
     student = TinyLaDeDa(pretrained=False, pretrained_path=None)
     pooling = TopKLogitPooling(r=0.1, min_k=5, aggregation="mean")
-    criterion = PatchDistillationLoss(
+    criterion = ImprovedPatchDistillationLoss(
         alpha_distill=0.5,
         alpha_task=0.5,
+        temperature=4.0,
+        use_kl_loss=True,
+        enable_scale_matching=True
     )
 
     teacher.eval()

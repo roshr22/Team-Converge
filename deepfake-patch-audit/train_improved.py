@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from models.student.tiny_ladeda import TinyLaDeDa
 from models.teacher.ladeda_wrapper import LaDeDaWrapper
 from datasets.base_dataset import BaseDataset
-from losses.distillation_improved import ImprovedPatchDistillationLoss, ModeCollapsePrevention
+from losses.distillation_improved import ImprovedPatchDistillationLoss
 from models.pooling import TopKLogitPooling
 from training.train_student_improved import ImprovedTwoStagePatchStudentTrainer
 

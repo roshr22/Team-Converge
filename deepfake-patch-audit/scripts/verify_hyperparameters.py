@@ -44,9 +44,9 @@ def test_saturation_guard():
     print("TEST 1: Saturation Guard Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
-    loss_fn = PatchDistillationLoss(
+    loss_fn = ImprovedPatchDistillationLoss(
         alpha_distill=0.1, 
         alpha_task=0.9,
         enable_saturation_guard=True,
@@ -99,9 +99,9 @@ def test_alpha_balance():
     print("TEST 2: Alpha Weight Balance Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
-    loss_fn = PatchDistillationLoss(
+    loss_fn = ImprovedPatchDistillationLoss(
         alpha_distill=0.1,
         alpha_task=0.9,
         enable_saturation_guard=True
@@ -151,9 +151,9 @@ def test_gradient_flow():
     print("TEST 3: Gradient Flow Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
-    loss_fn = PatchDistillationLoss(
+    loss_fn = ImprovedPatchDistillationLoss(
         alpha_distill=0.1,
         alpha_task=0.9,
         enable_saturation_guard=True
@@ -202,9 +202,9 @@ def test_loss_ranges():
     print("TEST 4: Loss Range Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
-    loss_fn = PatchDistillationLoss(
+    loss_fn = ImprovedPatchDistillationLoss(
         alpha_distill=0.1,
         alpha_task=0.9,
         enable_saturation_guard=True
@@ -254,7 +254,7 @@ def test_extreme_saturation_recovery():
     print("TEST 5: Extreme Saturation Recovery Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
     # Test WITHOUT saturation guard (should fail)
     print("  Testing WITHOUT saturation guard...")
@@ -317,13 +317,13 @@ def test_determinism():
     print("TEST 6: Determinism Verification")
     print("=" * 70)
     
-    from losses.distillation import PatchDistillationLoss
+    from losses.distillation_improved import ImprovedPatchDistillationLoss
     
     results = []
     for run in range(2):
         set_seed(42)  # Same seed
         
-        loss_fn = PatchDistillationLoss(
+        loss_fn = ImprovedPatchDistillationLoss(
             alpha_distill=0.1,
             alpha_task=0.9,
             enable_saturation_guard=True
