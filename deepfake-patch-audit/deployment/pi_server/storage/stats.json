@@ -1,0 +1,8 @@
+{
+  "dashboard": {
+    "total_images": 2,
+    "fake_detections": 1,
+    "last_prediction": "2026-01-04T13:35:44.411624",
+    "avg_fake_prob": 0.8281317949295044
+  }
+}
