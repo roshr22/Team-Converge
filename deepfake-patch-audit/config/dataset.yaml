@@ -16,7 +16,9 @@ dataset:
     test_csv: "data/splits/test.csv"
 
   # Data loading
-  num_workers: 4
+  # NOTE: num_workers set to 0 to fix Windows WinError 1455 (paging file error with CUDA)
+  # On Linux, you can increase this to 4 for faster data loading
+  num_workers: 0
   pin_memory: true
 
   # Image loading
