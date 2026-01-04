@@ -1,12 +1,6 @@
 # Dataset
 dataset/
 
-# Outputs
-outputs/
-checkpoints/
-weights/student/
-logs/
-
 # Python
 __pycache__/
 *.py[cod]
