@@ -1194,7 +1194,17 @@
 
             } catch (error) {
                 hideProgress();
-                showError('Error uploading image: ' + error.message);
+                let errorMsg = 'Error uploading image: ';
+
+                if (error.message === 'Failed to fetch') {
+                    errorMsg += 'Cannot connect to server. Make sure the server is running on localhost:5000';
+                } else if (error.message.includes('CORS')) {
+                    errorMsg += 'CORS error - server may not have CORS enabled';
+                } else {
+                    errorMsg += error.message;
+                }
+
+                showError(errorMsg);
                 console.error('Upload error:', error);
             }
         }

@@ -13,6 +13,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import requests
 from PIL import Image
 import io
@@ -35,6 +36,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Enable CORS for all routes
+CORS(app, resources={
+    r"/predict": {"origins": "*", "methods": ["POST", "OPTIONS"]},
+    r"/api/*": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+    r"/stats": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+    r"/status": {"origins": "*", "methods": ["GET", "OPTIONS"]}
+})
 
 # Configuration
 CONFIG = {
