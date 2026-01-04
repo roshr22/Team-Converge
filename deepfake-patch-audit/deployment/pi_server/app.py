@@ -59,7 +59,7 @@ CORS(app,
 
 # Configuration
 CONFIG = {
-    'MODEL_PATH': 'models/deepfake_detector.onnx',
+    'MODEL_PATH': 'models/teacher.onnx',  # ✅ ARCH FIX: Use non-quantized teacher (quantized has ConvInteger compatibility issues)
     'STORAGE_DIR': 'storage/suspicious_images',
     'STATS_FILE': 'storage/stats.json',
     'THRESHOLD': 0.84,  # Calibrated threshold
@@ -84,6 +84,10 @@ device_stats = {}
 captured_images = {}  # Store captured image metadata from devices
 stats_lock = Lock()  # ✅ PHASE 2.4: Thread-safe access to device_stats
 cleanup_counter = 0  # ✅ PHASE 2.5: Trigger cleanup every 100 predictions
+
+# ✅ PHASE 3.1: Command queue for remote capture feature
+capture_commands = {}  # {device_id: {'timestamp': ..., 'requester': ...}}
+command_lock = Lock()  # Thread-safe access to capture_commands
 
 
 def initialize_model():
@@ -450,6 +454,47 @@ def send_webhook_alert(device_id, prediction):
     thread.start()
 
 
+def cleanup_expired_commands():
+    """
+    ✅ PHASE 3.1: Remove commands older than 60 seconds.
+
+    Called periodically by background cleanup worker to prevent command queue
+    from growing unbounded and to expire requests that devices never picked up.
+    """
+    with command_lock:
+        now = datetime.now()
+        expired = []
+
+        for device_id, cmd in capture_commands.items():
+            cmd_time = datetime.fromisoformat(cmd['timestamp'])
+            age_seconds = (now - cmd_time).total_seconds()
+
+            if age_seconds > 60:  # Command older than 60 seconds
+                expired.append(device_id)
+
+        for device_id in expired:
+            del capture_commands[device_id]
+            logger.info(f"✓ Expired command for {device_id} (no device pickup)")
+
+        if expired:
+            logger.info(f"Cleanup: Expired {len(expired)} old commands")
+
+
+def command_cleanup_worker():
+    """
+    ✅ PHASE 3.1: Background worker thread that periodically cleans up expired commands.
+
+    Runs every 30 seconds to remove commands that devices didn't pick up within
+    the 60-second TTL window. Prevents memory leaks in long-running server.
+    """
+    while True:
+        time.sleep(30)  # Run cleanup every 30 seconds
+        try:
+            cleanup_expired_commands()
+        except Exception as e:
+            logger.error(f"Command cleanup error: {e}")
+
+
 @app.route('/test', methods=['GET', 'OPTIONS'])
 def test():
     """Simple test endpoint to verify server connectivity."""
@@ -735,6 +780,134 @@ def get_dashboard_data():
     }), 200
 
 
+@app.route('/api/capture-request', methods=['POST', 'OPTIONS'])
+@limiter.limit("5 per minute")  # Max 5 capture requests per minute per IP
+def request_capture():
+    """
+    ✅ PHASE 3.1: Queue a capture request for a specific Nicla device.
+
+    This endpoint is called by the dashboard to request that a Nicla device
+    capture an image. The command is queued in capture_commands and the device
+    polls /api/get-command to retrieve it.
+
+    Request body:
+    {
+        "device_id": "nicla_1"
+    }
+
+    Returns:
+    {
+        "status": "queued",
+        "device_id": "nicla_1",
+        "timestamp": "2026-01-04T12:34:56"
+    }
+
+    Status codes:
+    - 200: Command successfully queued
+    - 400: Invalid request (missing device_id or invalid format)
+    - 404: Device not found (no prior contact from device)
+    - 500: Server error
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'device_id' not in data:
+            logger.warning("Capture request missing device_id")
+            return jsonify({'error': 'Missing device_id in request body'}), 400
+
+        device_id = data['device_id']
+
+        # ✅ Validate device_id format (same as /predict endpoint)
+        if not re.match(r'^[a-zA-Z0-9_-]{1,50}$', device_id):
+            logger.warning(f"Capture request with invalid device_id: {device_id}")
+            return jsonify({'error': 'Invalid device_id format. Only alphanumeric, underscore, hyphen allowed (1-50 chars)'}), 400
+
+        # Check if device has ever contacted server
+        with stats_lock:
+            if device_id not in device_stats:
+                logger.warning(f"Capture request for unknown device: {device_id}")
+                return jsonify({'error': f'Device {device_id} not found. Device must send at least one image first.'}), 404
+
+        # Queue the command
+        with command_lock:
+            timestamp = datetime.now().isoformat()
+            capture_commands[device_id] = {
+                'timestamp': timestamp,
+                'requester': request.remote_addr
+            }
+
+        logger.info(f"✓ Capture request queued for device {device_id} (requester: {request.remote_addr})")
+
+        return jsonify({
+            'status': 'queued',
+            'device_id': device_id,
+            'timestamp': capture_commands[device_id]['timestamp']
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Capture request error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/get-command/<device_id>', methods=['GET', 'OPTIONS'])
+@limiter.limit("20 per minute")  # Allow frequent polling from devices
+def get_command(device_id):
+    """
+    ✅ PHASE 3.1: Check if there's a pending capture command for a device.
+
+    This endpoint is polled by Nicla devices every ~3 seconds to check if the
+    dashboard has requested a capture. If a command exists, it is returned and
+    then removed from the queue.
+
+    Parameters:
+    - device_id: Device identifier (URL parameter)
+
+    Returns (with command):
+    {
+        "command": "capture",
+        "timestamp": "2026-01-04T12:34:56"
+    }
+
+    Returns (no command):
+    {
+        "command": null
+    }
+
+    Status codes:
+    - 200: Success (may or may not have command)
+    - 400: Invalid device_id format
+    - 500: Server error
+    """
+    try:
+        # ✅ Validate device_id format
+        if not re.match(r'^[a-zA-Z0-9_-]{1,50}$', device_id):
+            logger.warning(f"Get command with invalid device_id: {device_id}")
+            return jsonify({'error': 'Invalid device_id format'}), 400
+
+        with command_lock:
+            if device_id in capture_commands:
+                # Command found: remove from queue and return
+                cmd = capture_commands.pop(device_id)
+
+                logger.info(f"✓ Capture command retrieved by device {device_id} (was queued for {(datetime.now() - datetime.fromisoformat(cmd['timestamp'])).total_seconds():.1f}s)")
+
+                return jsonify({
+                    'command': 'capture',
+                    'timestamp': cmd['timestamp']
+                }), 200
+            else:
+                # No command for this device
+                return jsonify({'command': None}), 200
+
+    except Exception as e:
+        logger.error(f"Get command error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # Initialize model
     if not initialize_model():
@@ -745,6 +918,11 @@ if __name__ == '__main__':
     Path(CONFIG['STORAGE_DIR']).mkdir(parents=True, exist_ok=True)
     Path(CONFIG['STATS_FILE']).parent.mkdir(parents=True, exist_ok=True)
 
+    # ✅ PHASE 3.1: Start background command cleanup worker
+    cleanup_thread = Thread(target=command_cleanup_worker, daemon=True)
+    cleanup_thread.start()
+    print("✓ Command cleanup worker started (runs every 30s)")
+
     # Run Flask server
     print("\n" + "="*80)
     print("DEEPFAKE DETECTION - RASPBERRY PI SERVER")
@@ -752,6 +930,9 @@ if __name__ == '__main__':
     print(f"✓ Model loaded: {CONFIG['MODEL_PATH']}")
     print(f"✓ Storage directory: {CONFIG['STORAGE_DIR']}")
     print(f"✓ Detection threshold: {CONFIG['THRESHOLD']}")
+    print(f"✓ Remote capture endpoints:")
+    print(f"  - POST /api/capture-request (max 5/min)")
+    print(f"  - GET /api/get-command/<device_id> (max 20/min)")
     print(f"\nServer running on http://0.0.0.0:5000")
     print("="*80 + "\n")
 

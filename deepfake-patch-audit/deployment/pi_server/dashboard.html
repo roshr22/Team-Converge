@@ -229,6 +229,74 @@
             text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
         }
 
+        /* ✅ PHASE 3.3: Capture button styling */
+        .capture-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #00ff9f;
+            border: 1px solid #00ff9f;
+            padding: 6px 12px;
+            margin-left: 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'Courier Prime', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-shadow: 0 0 8px rgba(0, 255, 159, 0.5);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .capture-button:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+            background: linear-gradient(135deg, #764ba2, #667eea);
+        }
+
+        .capture-button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .capture-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Toast notification styling */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 30, 60, 0.95);
+            color: #00ff9f;
+            padding: 15px 20px;
+            border-radius: 3px;
+            box-shadow: 0 0 20px rgba(0, 255, 159, 0.4), inset 0 0 20px rgba(0, 255, 159, 0.1);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.4s ease;
+            z-index: 10000;
+            max-width: 400px;
+            border: 1px solid #00ff9f;
+            font-size: 12px;
+            text-shadow: 0 0 10px rgba(0, 255, 159, 0.5);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        .toast.error {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+
         .device-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -997,9 +1065,12 @@
                 <div class="device-card fade-in">
                     <div class="device-header">
                         <span class="device-name">${deviceId}</span>
-                        <span class="device-status ${device.last_prediction ? '' : 'inactive'}">
-                            ${device.last_prediction ? '🟢 Active' : '🔴 Inactive'}
-                        </span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="capture-button" onclick="captureImage('${deviceId}')" title="Trigger remote capture on device">📷 Capture</button>
+                            <span class="device-status ${device.last_prediction ? '' : 'inactive'}">
+                                ${device.last_prediction ? '🟢 Active' : '🔴 Inactive'}
+                            </span>
+                        </div>
                     </div>
                     <div class="device-stats">
                         <div class="stat">
@@ -1413,6 +1484,75 @@
         document.getElementById('imageModal').addEventListener('click', (e) => {
             if (e.target.id === 'imageModal') closeModal();
         });
+
+        // ✅ PHASE 3.3: Remote capture functionality
+        async function captureImage(deviceId) {
+            const buttons = document.querySelectorAll('.capture-button');
+            const button = Array.from(buttons).find(b => b.onclick && b.onclick.toString().includes(deviceId));
+
+            if (!button) return;
+
+            button.disabled = true;
+            button.textContent = '⏳ Requesting...';
+
+            try {
+                const response = await fetch('/api/capture-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ device_id: deviceId })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Show success feedback
+                button.textContent = '✅ Queued';
+                showNotification(`✓ Capture request sent to ${deviceId}. Image will arrive in ~3-5 seconds.`, 'success');
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = '📷 Capture';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Capture error:', error);
+                button.textContent = '❌ Failed';
+                showNotification(`✗ Capture failed: ${error.message}`, 'error');
+
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.textContent = '📷 Capture';
+                }, 3000);
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            /* ✅ PHASE 3.3: Show toast notification to user */
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 400);  // Wait for transition
+            }, 5000);
+        }
     </script>
 </body>
 </html>

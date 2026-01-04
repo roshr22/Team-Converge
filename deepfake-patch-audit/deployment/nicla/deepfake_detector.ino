@@ -65,6 +65,10 @@ HTTPClient http;
 unsigned long lastCaptureTime = 0;
 bool isConnected = false;
 
+// ✅ PHASE 3.2: Command polling for remote capture
+const int COMMAND_CHECK_INTERVAL = 3000;  // Check for commands every 3 seconds
+unsigned long lastCommandCheck = 0;
+
 // JPEG compression buffer (max 20 KB for compressed output)
 uint8_t jpegBuffer[20480];  // 20 KB buffer
 JPEGENC jpeg;  // JPEG encoder instance
@@ -130,8 +134,19 @@ void loop() {
         return;
     }
 
-    // Capture and send image at specified interval
-    if (millis() - lastCaptureTime >= CAPTURE_INTERVAL_MS) {
+    // ✅ PHASE 3.2: Check for remote capture commands every 3 seconds
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastCommandCheck >= COMMAND_CHECK_INTERVAL) {
+        lastCommandCheck = currentMillis;
+
+        if (checkForCommands()) {
+            Serial.println("Remote capture triggered!");
+            captureAndSend();  // Immediate capture when command received
+        }
+    }
+
+    // Capture and send image at specified interval (periodic capture)
+    if (currentMillis - lastCaptureTime >= CAPTURE_INTERVAL_MS) {
         captureAndSend();
         lastCaptureTime = millis();
     }
@@ -813,6 +828,76 @@ void handleServerResponse(String response) {
         ledOn(LED_G);
         delay(1000);
         ledOff();
+    }
+}
+
+// ============================================================================
+// REMOTE CAPTURE COMMAND POLLING (PHASE 3.2)
+// ============================================================================
+
+bool checkForCommands() {
+    /*
+     * ✅ PHASE 3.2: Poll Flask server for pending capture commands.
+     *
+     * The dashboard can queue a capture request via POST /api/capture-request.
+     * This function polls GET /api/get-command/<device_id> to check for pending
+     * commands. If a capture command is received, the function returns true and
+     * the main loop immediately calls captureAndSend().
+     *
+     * Expected response:
+     * {
+     *   "command": "capture",
+     *   "timestamp": "2026-01-04T12:34:56"
+     * }
+     *
+     * or
+     *
+     * {
+     *   "command": null
+     * }
+     *
+     * Returns: true if capture command received, false otherwise
+     */
+
+    if (!isConnected || WiFi.status() != WL_CONNECTED) {
+        return false;
+    }
+
+    // Build request URL
+    String url = "http://";
+    url += PI_SERVER_IP;
+    url += ":";
+    url += PI_SERVER_PORT;
+    url += "/api/get-command/";
+    url += DEVICE_ID;
+
+    Serial.print("  Checking for commands... ");
+
+    // Send GET request with timeout
+    HTTPClient http;
+    http.setConnectTimeout(3000);  // 3 second connection timeout
+    http.setTimeout(5000);          // 5 second response timeout
+
+    int httpCode = http.GET(url);
+
+    if (httpCode != 200) {
+        Serial.print("HTTP ");
+        Serial.println(httpCode);
+        http.end();
+        return false;
+    }
+
+    String response = http.getString();
+    http.end();
+
+    // Check if command is "capture"
+    if (response.indexOf("\"command\":\"capture\"") != -1) {
+        Serial.println("✅ CAPTURE COMMAND RECEIVED!");
+        return true;
+    } else {
+        // No command
+        Serial.println("None");
+        return false;
     }
 }
 
