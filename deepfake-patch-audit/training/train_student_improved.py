@@ -193,13 +193,23 @@ class ImprovedTwoStagePatchStudentTrainer:
         )
 
         # Warmup then ReduceLROnPlateau
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer,
-            mode='max',
-            factor=0.5,
-            patience=self.loss_improvement_patience,
-            verbose=True
-        )
+        try:
+            # Try with verbose parameter (older PyTorch versions)
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='max',
+                factor=0.5,
+                patience=self.loss_improvement_patience,
+                verbose=True
+            )
+        except TypeError:
+            # Fallback for newer PyTorch versions without verbose parameter
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='max',
+                factor=0.5,
+                patience=self.loss_improvement_patience
+            )
 
         logger.info(f"✓ Stage 1 Optimizer: SGD(lr={self.stage1_lr}, momentum={self.momentum})")
 
