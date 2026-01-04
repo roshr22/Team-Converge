@@ -2,10 +2,12 @@
 """Two-stage student model training script with progressive unfreezing."""
 
 import argparse
+import sys
 import yaml
 import torch
+import random
+import numpy as np
 from pathlib import Path
-import sys
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,16 +21,69 @@ from models.pooling import TopKLogitPooling
 from training.train_student_two_stage import TwoStagePatchStudentTrainer
 
 
+def set_seed(seed=42):
+    """Set random seed for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
+def validate_config(config):
+    """Validate required configuration keys exist."""
+    required_keys = {
+        'model': {
+            'teacher': ['pretrained', 'pretrained_path'],
+            'student': ['pretrained', 'pretrained_path']
+        },
+        'dataset': ['resize_size', 'num_workers', 'pin_memory'],
+        'training': {
+            'distillation': ['alpha_distill', 'alpha_task']
+        },
+        'pooling': ['r', 'min_k', 'aggregation']
+    }
+    
+    def check_nested(cfg, keys, path=""):
+        for key, value in keys.items():
+            if key not in cfg:
+                raise KeyError(f"Missing required config key: {path}{key}")
+            if isinstance(value, dict):
+                check_nested(cfg[key], value, f"{path}{key}.")
+            elif isinstance(value, list):
+                for subkey in value:
+                    if subkey not in cfg[key]:
+                        raise KeyError(f"Missing required config key: {path}{key}.{subkey}")
+    
+    try:
+        check_nested(config, required_keys)
+        print("✓ Config validation passed")
+        return True
+    except KeyError as e:
+        print(f"✗ Config validation failed: {e}")
+        print("\nPlease check your config/base.yaml file")
+        sys.exit(1)
+
+
 def load_config(config_path="config/base.yaml"):
-    """Load configuration from YAML file."""
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
+    """Load and validate configuration from YAML file."""
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        validate_config(config)
+        return config
+    except FileNotFoundError:
+        print(f"✗ Config file not found: {config_path}")
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"✗ Error parsing YAML config: {e}")
+        sys.exit(1)
 
 
 def auto_detect_dataset_structure(dataset_root):
     """Auto-detect dataset structure and return appropriate paths."""
-    from pathlib import Path
-
     dataset_root = Path(dataset_root)
 
     # Check if we have train/val subdirectories
@@ -83,11 +138,21 @@ def main():
         "--teacher-weights",
         type=str,
         default=None,
-        choices=["wildrf", "forensyth", "finetuned"],
-        help="Teacher model weights: 'wildrf'/'forensyth' (pretrained) or 'finetuned' (fine-tuned)",
+        choices=["wildrf", "ForenSynth", "finetuned"],  # Fixed typo: forensyth → ForenSynth
+        help="Teacher model weights: 'wildrf'/'ForenSynth' (pretrained) or 'finetuned' (fine-tuned)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility"
     )
 
     args = parser.parse_args()
+
+    # Set random seed for reproducibility
+    set_seed(args.seed)
+    print(f"✓ Random seed set to {args.seed}")
 
     # Auto-detect dataset structure
     dataset_info = auto_detect_dataset_structure(args.dataset_root)
@@ -105,7 +170,7 @@ def main():
         print("\n2. CSV files:")
         print("   dataset/data/splits/train.csv")
         print("   dataset/data/splits/val.csv")
-        exit(1)
+        sys.exit(1)  # Fixed: exit(1) → sys.exit(1)
 
     print("\n" + "=" * 80)
     print("Dataset Auto-Detection")
@@ -125,12 +190,19 @@ def main():
     if args.teacher_weights:
         if args.teacher_weights.lower() == "wildrf":
             config["model"]["teacher"]["pretrained_path"] = "weights/teacher/WildRF_LaDeDa.pth"
-        elif args.teacher_weights.lower() == "forensyth":
+        elif args.teacher_weights.lower() == "forensynth":  # Fixed case handling
             config["model"]["teacher"]["pretrained_path"] = "weights/teacher/ForenSynth_LaDeDa.pth"
         elif args.teacher_weights.lower() == "finetuned":
             config["model"]["teacher"]["pretrained_path"] = "weights/teacher/teacher_finetuned_best.pth"
             config["model"]["teacher"]["pretrained"] = True  # Will load checkpoint
 
+    # Print final resolved paths
+    print("\n" + "=" * 80)
+    print("RESOLVED MODEL PATHS")
+    print("=" * 80)
+    print(f"Teacher: {config['model']['teacher']['pretrained_path']}")
+    print(f"Student: {config['model']['student']['pretrained_path']}")
+    
     print("\n" + "=" * 80)
     print("TWO-STAGE STUDENT TRAINING - Configuration")
     print("=" * 80)
@@ -140,7 +212,8 @@ def main():
     print(f"Stage 1 LR: {args.lr_s1}")
     print(f"Stage 2 LR: {args.lr_s2}")
     print(f"Device: {args.device}")
-    print(f"Teacher weights: {config['model']['teacher']['pretrained_path']}")
+    print(f"Distillation alpha: {config['training']['distillation']['alpha_distill']}")
+    print(f"Task alpha: {config['training']['distillation']['alpha_task']}")
 
     # =========================================================================
     # Load Models
@@ -149,7 +222,7 @@ def main():
     print("Loading Models")
     print("=" * 80)
 
-    # Student model
+    # Student model - safe dictionary access with .get()
     student_model = TinyLaDeDa(
         pretrained=config["model"]["student"].get("pretrained", False),
         pretrained_path=config["model"]["student"].get(
@@ -158,7 +231,7 @@ def main():
     )
     print(f"✓ Student model loaded: {student_model.count_parameters()} parameters")
 
-    # Teacher model
+    # Teacher model - safe dictionary access with .get()
     teacher_model = LaDeDaWrapper(
         pretrained=config["model"]["teacher"].get("pretrained", True),
         pretrained_path=config["model"]["teacher"].get(
@@ -210,12 +283,15 @@ def main():
             split_file=dataset_info["val_csv"],
         )
 
+    # Conditionally set pin_memory based on device
+    use_pin_memory = config["dataset"].get("pin_memory", True) and args.device == "cuda"
+    
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=config["dataset"]["num_workers"],
-        pin_memory=config["dataset"]["pin_memory"],
+        pin_memory=use_pin_memory,  # Only pin memory when using CUDA
     )
 
     val_loader = DataLoader(
@@ -223,11 +299,12 @@ def main():
         batch_size=args.batch_size,
         shuffle=False,
         num_workers=config["dataset"]["num_workers"],
-        pin_memory=config["dataset"]["pin_memory"],
+        pin_memory=use_pin_memory,  # Only pin memory when using CUDA
     )
 
     print(f"✓ Training dataset: {len(train_dataset)} samples")
     print(f"✓ Validation dataset: {len(val_dataset)} samples")
+    print(f"✓ pin_memory: {use_pin_memory} (device={args.device})")
 
     # =========================================================================
     # Setup Loss, Pooling, and Trainer
@@ -237,21 +314,36 @@ def main():
     print("=" * 80)
 
     criterion = PatchDistillationLoss(
-        alpha_distill=config["training"]["distillation"].get("alpha_distill", 0.5),
-        alpha_task=config["training"]["distillation"].get("alpha_task", 0.5),
+        alpha_distill=config["training"]["distillation"]["alpha_distill"],
+        alpha_task=config["training"]["distillation"]["alpha_task"],
     )
     print(
         f"✓ Loss: PatchDistillationLoss "
-        f"(alpha_distill={config['training']['distillation'].get('alpha_distill', 0.5)}, "
-        f"alpha_task={config['training']['distillation'].get('alpha_task', 0.5)})"
+        f"(alpha_distill={config['training']['distillation']['alpha_distill']}, "
+        f"alpha_task={config['training']['distillation']['alpha_task']})"
     )
 
     pooling = TopKLogitPooling(
-        r=config["pooling"].get("r", 0.1),
-        min_k=config["pooling"].get("min_k", 5),
-        aggregation=config["pooling"].get("aggregation", "mean"),
+        r=config["pooling"]["r"],
+        min_k=config["pooling"]["min_k"],
+        aggregation=config["pooling"]["aggregation"],
     )
-    print(f"✓ Pooling: TopKLogitPooling (r={config['pooling'].get('r', 0.1)})")
+    print(f"✓ Pooling: TopKLogitPooling (r={config['pooling']['r']}, min_k={config['pooling']['min_k']})")
+
+    # =========================================================================
+    # Verify Patch Grid Compatibility
+    # =========================================================================
+    print("\n" + "=" * 80)
+    print("Verifying Patch Grid Compatibility")
+    print("=" * 80)
+    
+    # Get expected patch grids from config
+    teacher_grid = tuple(config.get("patches", {}).get("teacher_grid", [31, 31]))
+    student_grid = tuple(config.get("patches", {}).get("student_grid", [126, 126]))
+    
+    print(f"Expected teacher grid: {teacher_grid[0]}×{teacher_grid[1]}")
+    print(f"Expected student grid: {student_grid[0]}×{student_grid[1]}")
+    print("✓ Patch grids configured (will be validated during first forward pass)")
 
     # =========================================================================
     # Create Trainer and Train
@@ -277,6 +369,7 @@ def main():
     print("Training Complete!")
     print("=" * 80)
     print(f"Checkpoints saved to: {args.output_dir}")
+    print(f"Final validation AUC: {history['val_auc'][-1]:.4f}")
 
 
 if __name__ == "__main__":
