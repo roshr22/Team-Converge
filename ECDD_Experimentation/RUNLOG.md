@@ -157,3 +157,50 @@ py evaluation/checkpoint_selection.py --demo --output-dir results/checkpoints
 Proceed to Step 4: Preprocessing equivalence guardrail.
 
 ---
+
+## 2026-01-09T20:00:00+05:30 — Step 4: Preprocessing Equivalence Guardrail
+
+### Objective
+Implement pixel-level smoke test verifying training and inference preprocessing produce identical outputs.
+
+### Plan
+1. Create `evaluation/preprocessing_equivalence_test.py` — smoke test with 7 checks
+2. Test on synthetic images (uniform noise, gradient, checkerboard)
+3. Verify channel order, dtype, resize determinism, normalization determinism, training/inference parity
+
+### Actions Taken
+- [x] Created `evaluation/preprocessing_equivalence_test.py` (485 lines)
+- [x] Fixed synthetic gradient image generation
+- [x] Tested all checks pass on 3 synthetic images
+
+### Diffs Summary
+| File | Lines | What | Why |
+|------|-------|------|-----|
+| `evaluation/preprocessing_equivalence_test.py` | 485 | Preprocessing smoke test | Training/inference parity guardrail |
+
+### Test Outputs
+```
+py evaluation/preprocessing_equivalence_test.py --demo --output-dir results
+> [PASS] Preprocessing equivalence test
+>    Images: 3/3 passed
+>    Tolerance: 1e-05
+>
+>    [PASS] synthetic_uniform
+>    [PASS] synthetic_gradient
+>    [PASS] synthetic_checkerboard
+>
+>    Report: results\20260109_200506_preprocessing_equivalence_report.json
+```
+
+**Status**: ✅ Step 4 COMPLETE
+
+### All Steps Complete Summary
+
+| Step | Status | Commit | Key Files |
+|------|--------|--------|-----------|
+| 1 | ✅ | 2123d7f | RUNLOG.md, AGENT_PROTOCOL.md, ACCEPTANCE_TESTS.md, DECISIONS.md |
+| 2 | ✅ | 68a76a1 | evaluation/{__init__,dataset_index,metrics,plot_diagnostics,evaluate_model}.py |
+| 3 | ✅ | b3967be | evaluation/{fit_temp,checkpoint_selection}.py |
+| 4 | ✅ | (pending) | evaluation/preprocessing_equivalence_test.py |
+
+---
