@@ -40,9 +40,79 @@ Bootstrap governance files and shared memory for finetuning workflow.
 | `DECISIONS.md` | 135 | New file, Deployment-Equivalence Contract | Freeze preprocessing/calibration/thresholds |
 
 ### Test Outputs
-Running smoke tests after commit...
+```
+py -c "from ecdd_core.pipeline import decode_image_bytes, resize_rgb_uint8, normalize_rgb_uint8; print('Pipeline imports OK')"
+> Pipeline imports OK
+
+py -c "from ecdd_core.calibration import fit_temperature, expected_calibration_error; print('Calibration imports OK')"
+> Calibration imports OK
+```
+
+**Status**: ✅ Step 1 COMPLETE
 
 ### Next Step
-Commit Step 1, run smoke tests, then proceed to Step 2 (evaluation diagnostics).
+Proceed to Step 2: Implement evaluation diagnostics path.
 
 ---
+
+## 2026-01-09T19:45:00+05:30 — Step 2: Implement Evaluation Diagnostics
+
+### Objective
+Add evaluation/diagnostics path for large online datasets with metrics grouped by source and compression.
+
+### Plan
+1. Create `evaluation/` directory under `ECDD_Experimentation/`
+2. Create `dataset_index.py` — schema for dataset index (label, source family, compression bucket)
+3. Create `metrics.py` — compute AUC, AP, F1, TPR@FPR, FPR@TPR, confusion matrix
+4. Create `evaluate_model.py` — CLI to run evaluation on indexed dataset
+5. Create `plot_diagnostics.py` — confidence histograms for misclassified samples
+6. Write CSV + JSON summaries + plots to `results/`
+
+### Actions Taken
+- [x] Created `evaluation/` directory
+- [x] Created `evaluation/__init__.py`
+- [x] Created `evaluation/dataset_index.py` — SampleEntry + DatasetIndex classes + index persistence
+- [x] Created `evaluation/metrics.py` — AUC, AP, F1, TPR@FPR, FPR@TPR, confusion matrix (numpy only)
+- [x] Created `evaluation/plot_diagnostics.py` — confidence histogram, reliability curve, confusion matrix, ROC, grouped bar
+- [x] Created `evaluation/evaluate_model.py` — CLI with demo mode, JSON/CSV output, all plots
+- [x] Fixed numpy 2.0 compatibility (trapz → trapezoid)
+- [x] Fixed Windows cp1252 encoding issue (removed Unicode emoji)
+
+### Diffs Summary
+| File | Lines | What | Why |
+|------|-------|------|-----|
+| `evaluation/__init__.py` | 31 | Package exports | Module organization |
+| `evaluation/dataset_index.py` | 228 | Sample/index schema, JSON persistence | External dataset indexing |
+| `evaluation/metrics.py` | 295 | Binary metrics without sklearn | Compute AUC/AP/F1/TPR@FPR/FPR@TPR |
+| `evaluation/plot_diagnostics.py` | 308 | 6 plot functions | Diagnostic visualizations |
+| `evaluation/evaluate_model.py` | 366 | CLI with demo mode | Run evaluations, output JSON/CSV/plots |
+
+### Test Outputs
+```
+py evaluation/evaluate_model.py --demo --output-dir results
+> Running demo evaluation with synthetic data...
+> [OK] Evaluation complete!
+>    JSON: results\20260109_194850_metrics.json
+>    CSV:  results\20260109_194850_metrics.csv
+>    Plots: results/20260109_194850_*.png
+>
+>    Overall AUC: 0.9688
+>    Overall F1:  0.8970
+
+Generated files:
+- 20260109_194850_metrics.json (18 KB)
+- 20260109_194850_metrics.csv (720 B)
+- 20260109_194850_confusion.png (50 KB)
+- 20260109_194850_roc.png (51 KB)
+- 20260109_194850_misclassified_confidence.png (43 KB)
+- 20260109_194850_auc_by_source.png (36 KB)
+- 20260109_194850_auc_by_compression.png (30 KB)
+```
+
+**Status**: ✅ Step 2 COMPLETE
+
+### Next Step
+Proceed to Step 3: Calibration + deployment-relevant checkpointing.
+
+---
+
