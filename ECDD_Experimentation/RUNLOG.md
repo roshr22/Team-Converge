@@ -116,3 +116,44 @@ Proceed to Step 3: Calibration + deployment-relevant checkpointing.
 
 ---
 
+## 2026-01-09T19:52:00+05:30 — Step 3: Calibration + Deployment Checkpointing
+
+### Objective
+Implement temperature scaling CLI and update checkpoint selection for deployment-relevant criteria.
+
+### Plan
+1. Create `evaluation/fit_temp.py` — CLI for fitting temperature scaling
+2. Create `evaluation/checkpoint_selection.py` — deployment-relevant best model selection
+
+### Actions Taken
+- [x] Created `evaluation/fit_temp.py` — temperature scaling CLI with reliability curves, ECE/NLL metrics
+- [x] Created `evaluation/checkpoint_selection.py` — checkpoint selection by FPR@TPR/F1/AUC (not training loss)
+- [x] Tested both demos successfully
+
+### Diffs Summary
+| File | Lines | What | Why |
+|------|-------|------|-----|
+| `evaluation/fit_temp.py` | 254 | Temperature scaling CLI | Calibration with reliability curves, versioned artifacts |
+| `evaluation/checkpoint_selection.py` | 306 | Checkpoint selection CLI | Deploy-relevant best model (FPR@TPR, not val_loss) |
+
+### Test Outputs
+```
+py evaluation/fit_temp.py --demo --output-dir results/calibration
+> [OK] Calibration complete!
+>    Temperature: 0.0500
+>    ECE: 0.1262 -> 0.0000
+>    NLL: 0.1370 -> 0.0000
+
+py evaluation/checkpoint_selection.py --demo --output-dir results/checkpoints
+> [OK] Checkpoint selection complete!
+>    Criterion: fpr_at_tpr=0.95
+>    Best: epoch 10, fpr_at_tpr=0.0200
+>    AUC: 0.9627, F1: 0.9650
+```
+
+**Status**: ✅ Step 3 COMPLETE
+
+### Next Step
+Proceed to Step 4: Preprocessing equivalence guardrail.
+
+---
