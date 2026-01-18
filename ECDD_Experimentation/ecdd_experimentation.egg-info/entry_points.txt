@@ -1,2 +1,0 @@
-[console_scripts]
-ecdd-run = run_all_tests:main
