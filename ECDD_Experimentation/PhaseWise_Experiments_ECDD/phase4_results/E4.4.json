@@ -1,0 +1,23 @@
+{
+  "experiment_id": "E4.4",
+  "name": "Operating point selection test",
+  "passed": true,
+  "details": {
+    "calibration_set": {
+      "path": "PhaseWise_Experiments_ECDD\\calibration_logits_ft2.json",
+      "num_samples": 34,
+      "label_counts": {
+        "0": 18,
+        "1": 16
+      }
+    },
+    "operating_point": {
+      "threshold": 0.9643689546316865,
+      "target_fpr": 0.05
+    },
+    "metrics": {
+      "selected_fpr": 0.0,
+      "selected_tpr": 0.0625
+    }
+  }
+}

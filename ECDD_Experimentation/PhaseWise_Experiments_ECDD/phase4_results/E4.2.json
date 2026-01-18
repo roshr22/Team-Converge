@@ -1,0 +1,30 @@
+{
+  "experiment_id": "E4.2",
+  "name": "Temperature scaling fit and verification",
+  "passed": true,
+  "details": {
+    "calibration_set": {
+      "path": "PhaseWise_Experiments_ECDD\\calibration_logits_ft2.json",
+      "num_samples": 34,
+      "label_counts": {
+        "0": 18,
+        "1": 16
+      }
+    },
+    "temperature": 2.7999999999999994,
+    "pre": {
+      "nll": 0.7670601619792169,
+      "ece": 0.25446961357447395
+    },
+    "post": {
+      "nll": 0.6238328322950288,
+      "ece": 0.11338373473319542
+    },
+    "fit": {
+      "best_nll": 0.6238328322950288,
+      "t_min": 0.05,
+      "t_max": 10.0,
+      "steps": 200
+    }
+  }
+}

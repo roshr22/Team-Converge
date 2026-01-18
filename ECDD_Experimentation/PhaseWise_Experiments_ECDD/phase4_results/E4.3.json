@@ -1,0 +1,30 @@
+{
+  "experiment_id": "E4.3",
+  "name": "Platt scaling fit and verification",
+  "passed": true,
+  "details": {
+    "calibration_set": {
+      "path": "PhaseWise_Experiments_ECDD\\calibration_logits_ft2.json",
+      "num_samples": 34,
+      "label_counts": {
+        "0": 18,
+        "1": 16
+      }
+    },
+    "params": {
+      "a": 0.4582811844332507,
+      "b": 0.41011815366768256
+    },
+    "pre": {
+      "ece": 0.25446961357447395
+    },
+    "post": {
+      "ece": 0.14522756254826594
+    },
+    "fit": {
+      "nll": 0.6111229270198217,
+      "lr": 0.05,
+      "steps": 2000
+    }
+  }
+}

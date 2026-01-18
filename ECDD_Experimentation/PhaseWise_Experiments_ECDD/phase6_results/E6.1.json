@@ -1,0 +1,24 @@
+{
+  "experiment_id": "E6.1",
+  "name": "Source-based split stress test",
+  "passed": true,
+  "details": {
+    "is_mock": true,
+    "holdout_sources": [
+      "platform_Z"
+    ],
+    "num_train": 79,
+    "num_test": 21,
+    "train_label_dist": {
+      "0": 36,
+      "1": 43
+    },
+    "test_label_dist": {
+      "0": 10,
+      "1": 11
+    },
+    "status": "PASS",
+    "note": "Mock data used. Re-run with real metadata and model for performance evaluation.",
+    "recommendation": "Evaluate model on test split to measure cross-source generalization."
+  }
+}

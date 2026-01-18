@@ -1,0 +1,206 @@
+[
+  {
+    "id": "00023",
+    "logit": -2.2693769931793213,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00023.jpg"
+  },
+  {
+    "id": "00025",
+    "logit": -1.7704861164093018,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00025.jpg"
+  },
+  {
+    "id": "00088",
+    "logit": -5.408921241760254,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00088.jpg"
+  },
+  {
+    "id": "00093",
+    "logit": -3.1629528999328613,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00093.jpg"
+  },
+  {
+    "id": "00099",
+    "logit": -2.5866994857788086,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00099.jpg"
+  },
+  {
+    "id": "00113",
+    "logit": -2.602058172225952,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00113.jpg"
+  },
+  {
+    "id": "00136",
+    "logit": -0.06556271016597748,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00136.jpg"
+  },
+  {
+    "id": "00182",
+    "logit": -4.205585479736328,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00182.jpg"
+  },
+  {
+    "id": "00327",
+    "logit": -3.2522354125976562,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00327.jpg"
+  },
+  {
+    "id": "00343",
+    "logit": -1.9713141918182373,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00343.jpg"
+  },
+  {
+    "id": "00390",
+    "logit": -1.4692885875701904,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00390.jpg"
+  },
+  {
+    "id": "00401",
+    "logit": -2.2789034843444824,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00401.jpg"
+  },
+  {
+    "id": "00403",
+    "logit": -1.8887994289398193,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00403.jpg"
+  },
+  {
+    "id": "00472",
+    "logit": 0.6802811622619629,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00472.jpg"
+  },
+  {
+    "id": "00473",
+    "logit": -1.7658753395080566,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00473.jpg"
+  },
+  {
+    "id": "00482",
+    "logit": -1.8681248426437378,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\00482.jpg"
+  },
+  {
+    "id": "565037942_1315519440042831_8848975727375564547_n",
+    "logit": 2.9436614513397217,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\565037942_1315519440042831_8848975727375564547_n.jpg"
+  },
+  {
+    "id": "588558673_777751918619097_81168967009413864_n",
+    "logit": -0.6435835361480713,
+    "label": 0,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\real\\588558673_777751918619097_81168967009413864_n.jpg"
+  },
+  {
+    "id": "00276TOPP4",
+    "logit": -2.083756685256958,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\00276TOPP4.jpg"
+  },
+  {
+    "id": "017EMQKL4D",
+    "logit": -2.3995308876037598,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\017EMQKL4D.jpg"
+  },
+  {
+    "id": "01_02__outside_talking_still_laughing__YVGY8LOK_frame",
+    "logit": 1.8944803476333618,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\01_02__outside_talking_still_laughing__YVGY8LOK_frame.png"
+  },
+  {
+    "id": "01_03__talking_against_wall__JZUXXFRB_frame",
+    "logit": 1.0068238973617554,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\01_03__talking_against_wall__JZUXXFRB_frame.png"
+  },
+  {
+    "id": "01FCG0FF23",
+    "logit": -2.344276189804077,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\01FCG0FF23.jpg"
+  },
+  {
+    "id": "02_03__walking_outside_cafe_disgusted__QH3Y0IG0_frame",
+    "logit": 0.316184937953949,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\02_03__walking_outside_cafe_disgusted__QH3Y0IG0_frame.png"
+  },
+  {
+    "id": "02_27__hugging_happy__GVFLSZD5_frame",
+    "logit": 1.2223252058029175,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\02_27__hugging_happy__GVFLSZD5_frame.png"
+  },
+  {
+    "id": "02P1HEQ0GB",
+    "logit": -1.7312536239624023,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\02P1HEQ0GB.jpg"
+  },
+  {
+    "id": "04U7OSKA3V",
+    "logit": -3.167177677154541,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\04U7OSKA3V.jpg"
+  },
+  {
+    "id": "face2face_frame",
+    "logit": -1.8827111721038818,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\face2face_frame.png"
+  },
+  {
+    "id": "faceswap_frame",
+    "logit": -1.0653698444366455,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\faceswap_frame.png"
+  },
+  {
+    "id": "flj55tflj55tflj5",
+    "logit": 1.370365858078003,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\flj55tflj55tflj5.png"
+  },
+  {
+    "id": "Gemini_Generated_Image_6ibyqs6ibyqs6iby",
+    "logit": 0.6440500020980835,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\Gemini_Generated_Image_6ibyqs6ibyqs6iby.png"
+  },
+  {
+    "id": "Gemini_Generated_Image_rv3u9xrv3u9xrv3u",
+    "logit": 0.6836413741111755,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\Gemini_Generated_Image_rv3u9xrv3u9xrv3u.png"
+  },
+  {
+    "id": "Gemini_Generated_Image_tcds8etcds8etcds (1)",
+    "logit": 3.2982566356658936,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\Gemini_Generated_Image_tcds8etcds8etcds (1).png"
+  },
+  {
+    "id": "neuraltextures_frame",
+    "logit": -1.3415032625198364,
+    "label": 1,
+    "path": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\fake\\neuraltextures_frame.png"
+  }
+]

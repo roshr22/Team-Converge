@@ -1,0 +1,30 @@
+{
+  "experiment_id": "E4.6",
+  "name": "Guardrail-conditioned threshold policy test",
+  "passed": true,
+  "details": {
+    "calibration_set": {
+      "path": "PhaseWise_Experiments_ECDD\\calibration_logits_ft2.json",
+      "num_samples": 34,
+      "label_counts": {
+        "0": 18,
+        "1": 16
+      }
+    },
+    "base_threshold": 0.9643689546316865,
+    "strict_threshold": 0.99,
+    "quality_threshold": 0.5,
+    "low_quality_fraction": 0.7647058823529411,
+    "policy_a_abstain": {
+      "abstain_rate": 0.7647058823529411,
+      "accuracy_high_quality": 0.375,
+      "error_low_quality": 0.0
+    },
+    "policy_b_stricter": {
+      "abstain_rate": 0.0,
+      "accuracy_high_quality": 0.375,
+      "error_low_quality": 0.4230769230769231
+    },
+    "recommendation": "Choose policy_a (abstain) if low-quality errors are unacceptable. Choose policy_b if some errors are tolerable to reduce abstain rate."
+  }
+}

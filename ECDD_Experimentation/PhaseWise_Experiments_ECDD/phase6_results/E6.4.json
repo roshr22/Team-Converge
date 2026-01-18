@@ -1,0 +1,67 @@
+{
+  "experiment_id": "E6.4",
+  "name": "Out-of-scope separation test",
+  "passed": true,
+  "details": {
+    "ood_dir": "F:\\Team converge\\Team-Converge\\ECDD_Experimentation\\ECDD_Experiment_Data\\ood",
+    "num_tested": 20,
+    "abstain_count": 20,
+    "abstain_rate": 1.0,
+    "face_detector": "stub",
+    "results": [
+      {
+        "image": "animal_01.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "animal_02.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "animal_03.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "animal_04.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cartoon_01.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cartoon_02.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cartoon_03.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cartoon_04.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cgi_01.png",
+        "num_faces": 0,
+        "should_abstain": true
+      },
+      {
+        "image": "cgi_02.png",
+        "num_faces": 0,
+        "should_abstain": true
+      }
+    ],
+    "status": "PASS",
+    "recommendation": "OOD samples should always abstain or be excluded from face accuracy metrics.",
+    "note": "Abstention via no-face-detection. With real model, also check explicit OOD detection."
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "experiment_id": "E4.5",
+  "name": "Abstain band design sweep",
+  "passed": true,
+  "details": {
+    "calibration_set": {
+      "path": "PhaseWise_Experiments_ECDD\\calibration_logits_ft2.json",
+      "num_samples": 34,
+      "label_counts": {
+        "0": 18,
+        "1": 16
+      }
+    },
+    "target_fpr": 0.05,
+    "baseline_threshold": 0.9643689546316865,
+    "baseline_error": 0.4411764705882353,
+    "sweep": [
+      {
+        "band_width": 0.05,
+        "t_real": 0.9143689546316864,
+        "t_fake": 0.9643689546316865,
+        "abstain_rate": 0.029411764705882353,
+        "error_non_abstained": 0.45454545454545453
+      },
+      {
+        "band_width": 0.1,
+        "t_real": 0.8643689546316865,
+        "t_fake": 0.9643689546316865,
+        "abstain_rate": 0.058823529411764705,
+        "error_non_abstained": 0.4375
+      },
+      {
+        "band_width": 0.15,
+        "t_real": 0.8143689546316865,
+        "t_fake": 0.9643689546316865,
+        "abstain_rate": 0.058823529411764705,
+        "error_non_abstained": 0.4375
+      },
+      {
+        "band_width": 0.2,
+        "t_real": 0.7643689546316865,
+        "t_fake": 0.9643689546316865,
+        "abstain_rate": 0.11764705882352941,
+        "error_non_abstained": 0.4
+      }
+    ],
+    "best": {
+      "band_width": 0.2,
+      "t_real": 0.7643689546316865,
+      "t_fake": 0.9643689546316865,
+      "abstain_rate": 0.11764705882352941,
+      "error_non_abstained": 0.4
+    }
+  }
+}

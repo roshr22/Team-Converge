@@ -1,0 +1,24 @@
+{
+  "experiment_id": "E6.2",
+  "name": "Time-based split drift probe",
+  "passed": true,
+  "details": {
+    "is_mock": true,
+    "split_timestamp": "2024-02-21T00:00:00",
+    "num_train": 50,
+    "num_test": 50,
+    "train_label_dist": {
+      "0": 21,
+      "1": 29
+    },
+    "test_label_dist": {
+      "0": 26,
+      "1": 24
+    },
+    "train_time_range": "2024-01-01T00:00:00 to 2024-02-20T00:00:00",
+    "test_time_range": "2024-02-21T00:00:00 to 2024-04-10T00:00:00",
+    "status": "PASS",
+    "note": "Mock data used. Re-run with real temporal metadata and model.",
+    "recommendation": "Monitor for temporal drift; recalibrate if performance degrades on recent data."
+  }
+}

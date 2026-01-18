@@ -1,0 +1,8 @@
+{
+  "experiment_id": "E4.1",
+  "name": "Calibration set contract test",
+  "passed": false,
+  "details": {
+    "error": "'CalibrationSetInfo' object has no attribute 'num_real'"
+  }
+}
