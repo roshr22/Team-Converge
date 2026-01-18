@@ -1,0 +1,209 @@
+# Training Configuration for Finetune 1
+# =====================================
+# This config contains all knobs for reproducible training.
+# Modify this file to change experiment parameters.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REPRODUCIBILITY
+# ─────────────────────────────────────────────────────────────────────────────
+seed: 42
+experiment_name: "finetune1_v2"
+output_dir: "artifacts/models/${experiment_name}"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATASET
+# ─────────────────────────────────────────────────────────────────────────────
+dataset:
+  # Raw data locations
+  ffpp_root: "data/raw/ffpp"
+  dfdc_sample_root: "data/raw/dfdc_sample"
+  
+  # Split ratios (video-level, not frame-level)
+  # NOTE: Splits are assigned by hash(group_id) mod 100
+  # 0-79 = train, 80-89 = val, 90-99 = test
+  split_ratios:
+    train: 0.8
+    val: 0.1
+    test: 0.1
+  
+  # Frame extraction settings
+  # Policy: Uniform-K sampling (exactly K frames uniformly across video duration)
+  sampling:
+    policy: "uniform_k"          # Options: uniform_k, fixed_fps
+    frames_train_val: 10         # K frames per video for train/val
+    frames_test: 20              # K frames per video for test (more stable eval)
+    min_jitter_gap: 0.5          # Min seconds between samples (prevents consecutive)
+    epsilon: 0.1                 # Start/end margin in seconds
+    
+  # Caps to prevent over-representation
+  caps:
+    max_frames_per_video: 20     # Hard cap per video
+    max_frames_per_group: 100    # Cap per group_id per epoch
+  
+  # Face detection & cropping
+  crop_size: 256                 # Final face crop size
+  face_detector: "blazeface"     # Options: blazeface, mediapipe, mtcnn
+  min_face_confidence: 0.8       # Minimum detection confidence
+  margin_factor: 0.3             # Extra margin around face (30%)
+  
+  # On-the-fly vs materialized extraction
+  materialize_faces: false       # Set true if I/O becomes bottleneck
+  
+  # Data paths
+  index_dir: "data/index"
+  splits_dir: "data/splits"
+  faces_dir: "data/derived/faces"
+  manifests_dir: "artifacts/manifests"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUGMENTATION
+# ─────────────────────────────────────────────────────────────────────────────
+augmentation:
+  enabled: true
+  
+  # Geometric
+  p_flip: 0.5
+  p_rotation: 0.3
+  rotation_range: [-15, 15]      # degrees
+  p_random_crop: 0.3
+  random_crop_scale: [0.85, 1.0]
+  random_crop_ratio: [0.9, 1.1]
+  
+  # Compression / Degradation (critical for deepfake robustness)
+  p_jpeg: 0.4
+  jpeg_qualities: [30, 40, 50, 60, 75, 90]
+  p_resize: 0.3
+  resize_scales: [0.5, 0.6, 0.7, 0.8]
+  p_blur: 0.2
+  blur_sigmas: [0.5, 1.0, 1.5, 2.0]
+  p_noise: 0.2
+  noise_sigmas: [5, 10, 15]
+  
+  # Color
+  p_color: 0.3
+  brightness_range: [0.8, 1.2]
+  contrast_range: [0.8, 1.2]
+  saturation_range: [0.8, 1.2]
+  hue_range: [-0.05, 0.05]
+  p_grayscale: 0.05
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODEL
+# ─────────────────────────────────────────────────────────────────────────────
+model:
+  architecture: "ladeda_resnet50"
+  pretrained: true               # Use ImageNet pretrained backbone
+  
+  # Layer freezing (for transfer learning efficiency)
+  # Options: conv1, layer1, layer2, layer3, layer4
+  freeze_layers:
+    - "conv1"
+    - "layer1"
+    - "layer2"
+  
+  # Regularization
+  dropout_rate: 0.4
+  
+  # Attention pooling
+  attention_hidden_dim: 512
+  attention_temperature: 1.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TRAINING
+# ─────────────────────────────────────────────────────────────────────────────
+training:
+  # Batching
+  batch_size: 24
+  num_workers: 4
+  pin_memory: true
+  
+  # Optimizer
+  optimizer: "adamw"
+  learning_rate: 3.0e-5
+  weight_decay: 0.001
+  betas: [0.9, 0.999]
+  
+  # Scheduler
+  scheduler: "cosine"
+  warmup_epochs: 2
+  min_lr: 1.0e-7
+  
+  # Training duration
+  max_epochs: 30
+  early_stopping_patience: 5
+  
+  # Gradient handling
+  gradient_clip_norm: 1.0
+  use_amp: true                  # Mixed precision training
+  
+  # Checkpointing
+  save_every_epochs: 5
+  save_best_only: true
+  best_metric: "val_f1"          # Metric to track for best model
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOSS
+# ─────────────────────────────────────────────────────────────────────────────
+loss:
+  type: "bce_with_logits"
+  label_smoothing: 0.0           # Optional: 0.05-0.1 for regularization
+  pos_weight: null               # Auto-computed from class balance if null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EVALUATION
+# ─────────────────────────────────────────────────────────────────────────────
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - auc
+    - ece                        # Expected Calibration Error
+  
+  # Operating point selection
+  target_fpr: 0.05               # For threshold selection
+  
+  # Visualization
+  save_confusion_matrix: true
+  save_roc_curve: true
+  save_reliability_diagram: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOGGING
+# ─────────────────────────────────────────────────────────────────────────────
+logging:
+  log_every_steps: 50
+  wandb_enabled: false
+  wandb_project: "ecdd-finetune"
+  tensorboard_enabled: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COLAB / LOCAL PATHS
+# ─────────────────────────────────────────────────────────────────────────────
+colab:
+  # Use these paths when running on Colab
+  ffpp_local_root: "/content/data/raw/ffpp"
+  cache_dir: "/content/cache/faces"
+  copy_from_drive: "/content/drive/MyDrive/data/raw/ffpp"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LAZY CACHING (materialize-on-first-use)
+# ─────────────────────────────────────────────────────────────────────────────
+caching:
+  enabled: true                       # Enable cache-on-first-use
+  cache_dir: "cache/faces"            # Relative or absolute; /content/cache/faces on Colab
+  jpeg_quality: 95                    # Cache JPEG quality
+  write_materialized_manifest: false  # Update manifest filepath column after caching
+  failure_log: "artifacts/reports/extraction_failures.csv"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BATCH SAMPLING CONSTRAINTS (Step 7)
+# ─────────────────────────────────────────────────────────────────────────────
+batch_sampling:
+  require_method_mixing: true   # Real + ≥1 fake method per batch
+  min_fake_methods: 1           # Minimum distinct fake methods per batch
+  prefer_multi_method: true     # Prefer ≥2 fake methods when possible
+  max_samples_per_video: 1      # Hard limit per video_id per batch
+  max_samples_per_group: 1      # Soft preference per group_id per batch
+  shuffle_every_epoch: true     # Re-shuffle while preserving constraints
