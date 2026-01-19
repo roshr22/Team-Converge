@@ -2,8 +2,7 @@
 data/
 cache/
 
-# Derived artifacts
-artifacts/manifests/
+# Derived artifacts (keep manifests for repo)
 artifacts/reports/
 artifacts/models/
 artifacts/aug_debug/
