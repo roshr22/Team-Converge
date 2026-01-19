@@ -32,6 +32,13 @@ from .manifest import (
 from .dataset import FFppDataset
 from .batch_sampler import ConstrainedBatchSampler, validate_batch_constraints
 from .augmentations import DeploymentRealismAugmentation, ValidationTransform
+from .staged_training import (
+    FinetuneStage,
+    StageConfig,
+    LayerFreezer,
+    CheckpointManager,
+    CalibrationLogger,
+)
 
 __all__ = [
     "set_global_seed",
@@ -51,4 +58,9 @@ __all__ = [
     "ConstrainedBatchSampler",
     "DeploymentRealismAugmentation",
     "ValidationTransform",
+    "LayerFreezer",
+    "CheckpointManager",
+    "CalibrationLogger",
+    "FinetuneStage",
+    "StageConfig",
 ]

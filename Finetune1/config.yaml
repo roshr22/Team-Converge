@@ -207,3 +207,35 @@ batch_sampling:
   max_samples_per_video: 1      # Hard limit per video_id per batch
   max_samples_per_group: 1      # Soft preference per group_id per batch
   shuffle_every_epoch: true     # Re-shuffle while preserving constraints
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGED FINE-TUNING (Step 9)
+# ─────────────────────────────────────────────────────────────────────────────
+finetuning_stages:
+  # Stage A: Head-only stabilization
+  # Freeze backbone, train only head for 1-2 epochs
+  stage_a:
+    epochs: 2
+    head_lr: 1.0e-3              # Moderate LR for head
+    freeze_bn: true              # Keep BN in eval mode for frozen layers
+    patience: 2                  # Early stopping patience
+
+  # Stage B: Partial unfreeze (layer4)
+  # Unfreeze layer4, use differential LR
+  stage_b:
+    epochs: 8
+    unfreeze: ["layer4"]
+    head_lr: 3.0e-5
+    backbone_lr_ratio: 0.1       # backbone_lr = head_lr * 0.1 = 3e-6
+    freeze_bn: true
+    patience: 5
+
+  # Stage C: Optional deeper unfreeze (layer3+layer4)
+  # Only if val plateaus and cross-dataset generalization is poor
+  stage_c:
+    epochs: 5
+    unfreeze: ["layer3", "layer4"]
+    head_lr: 1.0e-5
+    backbone_lr_ratio: 0.05      # backbone_lr = 5e-7
+    freeze_bn: true
+    patience: 3
