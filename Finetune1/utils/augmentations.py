@@ -351,14 +351,21 @@ class DeploymentRealismAugmentation:
     
     def _log_params(self, params: AugmentationParams):
         """Log augmentation parameters."""
+        downscale_str = f"{params.downscale_factor:.2f}" if params.downscale_applied else "N/A"
+        blur_str = f"{params.blur_sigma:.2f}" if params.blur_applied else "N/A"
+        noise_str = f"{params.noise_sigma:.1f}" if params.noise_applied else "N/A"
+        brightness_str = f"{params.brightness_factor:.2f}" if params.color_applied else "N/A"
+        gamma_str = f"{params.gamma:.2f}" if params.color_applied else "N/A"
+        jpeg_str = str(params.jpeg_quality) if params.jpeg_applied else "N/A"
+        
         logger.info(
             f"[AUG #{self._sample_count}] "
-            f"jpeg={params.jpeg_quality if params.jpeg_applied else 'N/A'} "
-            f"downscale={params.downscale_factor:.2f if params.downscale_applied else 'N/A'} "
-            f"blur={params.blur_sigma:.2f if params.blur_applied else 'N/A'} "
-            f"noise={params.noise_sigma:.1f if params.noise_applied else 'N/A'} "
-            f"brightness={params.brightness_factor:.2f if params.color_applied else 'N/A'} "
-            f"gamma={params.gamma:.2f if params.color_applied else 'N/A'}"
+            f"jpeg={jpeg_str} "
+            f"downscale={downscale_str} "
+            f"blur={blur_str} "
+            f"noise={noise_str} "
+            f"brightness={brightness_str} "
+            f"gamma={gamma_str}"
         )
     
     def get_last_params(self) -> Optional[Dict[str, Any]]:
