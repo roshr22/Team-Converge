@@ -123,7 +123,7 @@ class FaceDetector:
                     y_min=y_min,
                     x_max=x_max,
                     y_max=y_max,
-                    confidence=detection.score[0] if detection.score else 0.0,
+                    confidence=float(detection.score[0]) if len(detection.score) > 0 else 0.0,
                 ))
         
         # Sort by area (largest first)
