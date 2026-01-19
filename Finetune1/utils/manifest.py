@@ -28,6 +28,7 @@ class SampleRecord:
     method: str
     group_id: str
     video_id: str
+    video_path: str  # Relative path to source video (for streaming extraction)
     timestamp: float
     filepath: str  # Path to stored crop, or empty if streaming
 
@@ -107,6 +108,7 @@ def generate_samples_from_videos(
                 method=video.method,
                 group_id=video.group_id,
                 video_id=video.video_id,
+                video_path=video.video_path,  # Store for streaming extraction
                 timestamp=ts,
                 filepath=filepath,
             ))
@@ -129,7 +131,7 @@ def save_samples_csv(samples: List[SampleRecord], output_path: Path) -> None:
     
     fieldnames = [
         'sample_id', 'dataset', 'split', 'label', 'method',
-        'group_id', 'video_id', 'timestamp', 'filepath'
+        'group_id', 'video_id', 'video_path', 'timestamp', 'filepath'
     ]
     
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
@@ -162,6 +164,7 @@ def load_samples_csv(csv_path: Path) -> List[SampleRecord]:
                 method=row['method'],
                 group_id=row['group_id'],
                 video_id=row['video_id'],
+                video_path=row['video_path'],
                 timestamp=float(row['timestamp']),
                 filepath=row['filepath'],
             ))
