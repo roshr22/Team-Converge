@@ -20,7 +20,6 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # OS files
 .DS_Store
