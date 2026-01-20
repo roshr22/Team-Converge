@@ -24,8 +24,20 @@ import time
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utils.face_extraction import (
+# Import face_extraction directly from file to avoid loading 'utils' package
+# which imports torch/etc causing multiprocessing issues on Windows
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "face_extraction", 
+    Path(__file__).parent / "utils" / "face_extraction.py"
+)
+face_extraction = importlib.util.module_from_spec(spec)
+sys.modules["face_extraction"] = face_extraction
+spec.loader.exec_module(face_extraction)
+
+from face_extraction import (
     FaceDetector,
+    FaceExtractor as FaceExtractorBase, # Renamed to avoid current file conflict if needed
     decode_frame_ffmpeg,
     expand_bbox,
     crop_and_resize,
@@ -170,7 +182,7 @@ def run_extraction(
     workers: int = 8,
     log_interval: int = 100,
 ) -> dict:
-    """Run parallel extraction with progress logging.
+    """Run parallel extraction with ProcessPoolExecutor for max speed.
     
     Args:
         extractor: FaceExtractor instance
@@ -181,51 +193,186 @@ def run_extraction(
     Returns:
         Final statistics dict
     """
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    
+    # Use max cores if workers > logical cores
+    max_cores = multiprocessing.cpu_count()
+    workers = min(workers, max_cores)
+    
     total = len(tasks)
+    
+    # Filter out already done tasks first (fast check)
+    print("Checking for existing files...")
+    todo_tasks = []
+    skipped = 0
+    for t in tasks:
+        if t.cache_path.exists():
+            skipped += 1
+        else:
+            todo_tasks.append(t)
+            
+    print(f"Skipping {skipped} already cached files.")
+    print(f"Processing remaining {len(todo_tasks)} files with {workers} workers (ProcessPool)...")
+    
+    if not todo_tasks:
+        return {
+            "extracted": 0,
+            "skipped": skipped,
+            "failed": 0,
+            "total": total,
+            "success_rate": 1.0
+        }
+
     completed = 0
+    failed = 0
+    extracted = 0
     start_time = time.time()
     
     print(f"\n{'='*60}")
-    print(f"PRE-EXTRACTING {total} FACES")
-    print(f"Workers: {workers}")
+    print(f"PRE-EXTRACTING {len(todo_tasks)} FACES")
+    print(f"Workers: {workers} (ProcessPool)")
     print(f"{'='*60}\n")
     
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        # Submit all tasks
-        futures = {executor.submit(extractor.extract_one, task): task for task in tasks}
-        
-        # Process completions
-        for future in as_completed(futures):
-            completed += 1
+    # Use ProcessPoolExecutor to bypass GIL
+    # NOTE: We can't pickle the extractor with its locks/local state easily
+    # So we'll instantiate it inside the worker process if needed, 
+    # but for simplicity we pass the config and let the worker rebuild it
+    # OR we use a top-level function.
+    
+    # Since extract_one is an instance method and FaceExtractor has state (locks),
+    # pickling will fail or be slow. 
+    # BETTER APPROACH: Use a static/global worker function and simple arguments.
+    
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        # Submit tasks using the global helper function defined below
+        # We need to pass the arguments needed to reconstruct the extractor state or pass paths
+        futures = []
+        for task in todo_tasks:
+            args = (
+                str(extractor.video_root),
+                str(extractor.cache_dir), 
+                extractor.margin,
+                extractor.crop_size,
+                extractor.jpeg_quality,
+                task
+            )
+            futures.append(executor.submit(_worker_extract, args))
             
-            if completed % log_interval == 0 or completed == total:
+        # Process completions
+        for i, future in enumerate(as_completed(futures)):
+            try:
+                success, msg = future.result()
+                if success:
+                    extracted += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                
+            completed += 1
+            total_done = skipped + completed
+            
+            if completed % log_interval == 0 or completed == len(todo_tasks):
                 elapsed = time.time() - start_time
                 rate = completed / elapsed if elapsed > 0 else 0
-                remaining = (total - completed) / rate if rate > 0 else 0
+                remaining_items = len(todo_tasks) - completed
+                remaining_time = remaining_items / rate if rate > 0 else 0
                 
-                stats = extractor.get_stats()
                 print(
-                    f"[{completed}/{total}] "
-                    f"extracted={stats['extracted']} "
-                    f"skipped={stats['skipped']} "
-                    f"failed={stats['failed']} "
-                    f"| {rate:.1f}/s | ETA: {remaining/60:.1f}min"
+                    f"[{total_done}/{total}] "
+                    f"new_extracted={extracted} "
+                    f"failed={failed} "
+                    f"| {rate:.1f} fps | ETA: {remaining_time/60:.1f}min"
                 )
     
     elapsed = time.time() - start_time
-    stats = extractor.get_stats()
+    stats = extractor.get_stats() # This won't reflect process pool updates
+    
+    # Construct stats manually since processes didn't update the main object
+    final_stats = {
+        "extracted": extracted,
+        "skipped": skipped,
+        "failed": failed,
+        "total": total,
+        "success_rate": (extracted + skipped) / total if total > 0 else 0,
+    }
     
     print(f"\n{'='*60}")
     print(f"EXTRACTION COMPLETE")
     print(f"{'='*60}")
     print(f"Total time: {elapsed/60:.1f} minutes")
-    print(f"Extracted: {stats['extracted']}")
-    print(f"Skipped (cached): {stats['skipped']}")
-    print(f"Failed: {stats['failed']}")
-    print(f"Success rate: {stats['success_rate']*100:.1f}%")
+    print(f"Extracted: {final_stats['extracted']}")
+    print(f"Skipped (cached): {final_stats['skipped']}")
+    print(f"Failed: {final_stats['failed']}")
+    print(f"Success rate: {final_stats['success_rate']*100:.1f}%")
     print(f"{'='*60}\n")
     
-    return stats
+    return final_stats
+
+
+def _worker_extract(args):
+    """Worker function for ProcessPoolExecutor.
+    Needs to be outside class to be picklable.
+    """
+    video_root, cache_dir, margin, crop_size, jpeg_quality, task = args
+    
+    # Re-instantiate a lightweight extractor for just this task
+    # We don't need locks since we are in a separate process
+    try:
+        # Import safely inside worker to ensure clean state and avoid torch (via utils package)
+        import importlib.util
+        import sys
+        from pathlib import Path
+        
+        # If not already imported/patched in this worker process
+        if "face_extraction" not in sys.modules:
+            spec = importlib.util.spec_from_file_location(
+                "face_extraction", 
+                Path(__file__).parent / "utils" / "face_extraction.py"
+            )
+            face_extraction = importlib.util.module_from_spec(spec)
+            sys.modules["face_extraction"] = face_extraction
+            spec.loader.exec_module(face_extraction)
+            
+        from face_extraction import (
+            FaceDetector, decode_frame_ffmpeg, expand_bbox, crop_and_resize
+        )
+        
+        # Check cache again just in case
+        if task.cache_path.exists():
+            return True, "skipped"
+            
+        # Decode
+        video_path = Path(video_root) / task.video_path
+        frame = decode_frame_ffmpeg(video_path, task.timestamp)
+        if frame is None:
+            return False, "decode_failed"
+            
+        # Detect
+        # Cache detector process-locally
+        if not hasattr(_worker_extract, 'detector'):
+            _worker_extract.detector = FaceDetector()
+            
+        detector = _worker_extract.detector
+        bbox = detector.get_primary_face(frame)
+        
+        if bbox is None:
+            return False, "no_face"
+            
+        # Crop
+        expanded = expand_bbox(bbox, margin=margin)
+        crop = crop_and_resize(frame, expanded, target_size=crop_size)
+        
+        # Save
+        task.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        crop.save(task.cache_path, format='JPEG', quality=jpeg_quality)
+        
+        return True, "extracted"
+        
+    except Exception as e:
+        return False, str(e)
+
 
 
 def main():

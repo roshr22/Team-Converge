@@ -63,9 +63,10 @@ class FaceCrop:
 
 
 class FaceDetector:
-    """Face detector using MediaPipe BlazeFace.
+    """Face detector using MediaPipe BlazeFace (Tasks API).
     
     Provides consistent detection across the entire pipeline.
+    Updated to use MediaPipe Tasks API (0.10.30+) which replaces mp.solutions.
     """
     
     def __init__(self, min_confidence: float = MIN_DETECTION_CONFIDENCE):
@@ -76,22 +77,49 @@ class FaceDetector:
         """
         self.min_confidence = min_confidence
         self._detector = None
-        self._mp_face = None
     
     def _lazy_init(self):
         """Lazily initialize MediaPipe to avoid import overhead."""
         if self._detector is None:
             try:
                 import mediapipe as mp
-                self._mp_face = mp.solutions.face_detection
-                self._detector = self._mp_face.FaceDetection(
-                    model_selection=1,  # Full range model
+                from mediapipe.tasks import python
+                from mediapipe.tasks.python import vision
+                
+                # Configure face detector options
+                base_options = python.BaseOptions(
+                    model_asset_path=self._get_model_path()
+                )
+                options = vision.FaceDetectorOptions(
+                    base_options=base_options,
                     min_detection_confidence=self.min_confidence,
                 )
-            except ImportError:
+                self._detector = vision.FaceDetector.create_from_options(options)
+            except ImportError as e:
                 raise ImportError(
-                    f"MediaPipe not installed. Install with: pip install {BLAZEFACE_VERSION}"
+                    f"MediaPipe not installed or missing components. "
+                    f"Install with: pip install mediapipe>=0.10.30. Error: {e}"
                 )
+    
+    def _get_model_path(self) -> str:
+        """Get or download the BlazeFace model for face detection."""
+        import os
+        import urllib.request
+        
+        # Model URL from MediaPipe's official models
+        model_url = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+        
+        # Cache directory for the model
+        cache_dir = Path(__file__).parent.parent / "cache" / "models"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        model_path = cache_dir / "blaze_face_short_range.tflite"
+        
+        if not model_path.exists():
+            print(f"Downloading BlazeFace model to {model_path}...")
+            urllib.request.urlretrieve(model_url, model_path)
+            print("Model downloaded successfully!")
+        
+        return str(model_path)
     
     def detect(self, image: np.ndarray) -> List[BoundingBox]:
         """Detect faces in an image.
@@ -104,27 +132,36 @@ class FaceDetector:
         """
         self._lazy_init()
         
-        # MediaPipe expects RGB
-        results = self._detector.process(image)
+        import mediapipe as mp
+        
+        # Convert numpy array to MediaPipe Image
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+        
+        # Run detection
+        detection_result = self._detector.detect(mp_image)
         
         boxes = []
-        if results.detections:
-            for detection in results.detections:
-                bbox = detection.location_data.relative_bounding_box
-                
-                # Convert to our format (x_min, y_min, x_max, y_max)
-                x_min = max(0, bbox.xmin)
-                y_min = max(0, bbox.ymin)
-                x_max = min(1, bbox.xmin + bbox.width)
-                y_max = min(1, bbox.ymin + bbox.height)
-                
-                boxes.append(BoundingBox(
-                    x_min=x_min,
-                    y_min=y_min,
-                    x_max=x_max,
-                    y_max=y_max,
-                    confidence=float(detection.score[0]) if len(detection.score) > 0 else 0.0,
-                ))
+        h, w = image.shape[:2]
+        
+        for detection in detection_result.detections:
+            bbox = detection.bounding_box
+            
+            # Convert pixel coordinates to normalized (0-1) format
+            x_min = max(0, bbox.origin_x / w)
+            y_min = max(0, bbox.origin_y / h)
+            x_max = min(1, (bbox.origin_x + bbox.width) / w)
+            y_max = min(1, (bbox.origin_y + bbox.height) / h)
+            
+            # Get confidence score
+            confidence = detection.categories[0].score if detection.categories else 0.0
+            
+            boxes.append(BoundingBox(
+                x_min=x_min,
+                y_min=y_min,
+                x_max=x_max,
+                y_max=y_max,
+                confidence=float(confidence),
+            ))
         
         # Sort by area (largest first)
         boxes.sort(key=lambda b: b.area, reverse=True)
